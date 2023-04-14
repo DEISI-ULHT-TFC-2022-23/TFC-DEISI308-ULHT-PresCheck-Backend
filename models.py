@@ -1,32 +1,33 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
+from flask_login import UserMixin
 
 db = SQLAlchemy()
 
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.LargeBinary(60), nullable=False)
-    is_active = db.Column(db.Boolean(), nullable=False, default=False)
+    password = db.Column(db.String(100), nullable=False)
     is_admin = db.Column(db.Boolean(), nullable=False, default=False)
-    professor = db.relationship('Professor', backref='user')
+    professor_id = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __repr__(self):
         return '<User %r>' % self.username
 
-    def check_password(self, password):
-        return self.password == password
+    def is_admin(self):
+        return self.is_admin
+
+    def is_active(self):
+        return self.is_active()
 
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    firstname = db.Column(db.String(80), nullable=True)
-    lastname = db.Column(db.String(80), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
-    aulas = db.relationship('Aula', backref='professor')
+    user = db.relationship('User', backref='professor')
+    unidades = db.relationship('UnidadeCurricular', backref='professor')
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -39,8 +40,6 @@ class Professor(db.Model):
 
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String, nullable=True)
-    last_name = db.Column(db.String, nullable=True)
     presencas = db.relationship('Presenca', backref='aluno')
     dispositivos = db.relationship('Dispositivo', backref='aluno')
     created_at = db.Column(db.DateTime, server_default=func.now())
@@ -55,7 +54,7 @@ class Aluno(db.Model):
 
 class Dispositivo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    uid = db.Column(db.LargeBinary(60), nullable=False)
+    uid = db.Column(db.String(100), unique=True, nullable=False)
     aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -71,6 +70,7 @@ class UnidadeCurricular(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     code = db.Column(db.Integer, unique=True)
     name = db.Column(db.String, nullable=False)
+    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=True)
     aulas = db.relationship('Aula', backref='unidadecurricular')
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -82,12 +82,26 @@ class UnidadeCurricular(db.Model):
         return self.name
 
 
+class Sala(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(7), nullable=False)
+    arduino_id = db.Column(db.String, nullable=False)
+    aulas = db.relationship('Aula', backref='sala')
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
+
+    def __repr__(self):
+        return '<Sala %r>' % self.name
+
+    def __str__(self):
+        return self.name
+
+
 class Aula(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    date = db.Column(db.DateTime)
-    duration = db.Column(db.Interval, nullable=True)
+    date = db.Column(db.Date, nullable=False)
     unidade_id = db.Column(db.Integer, db.ForeignKey('unidadecurricular.id'), nullable=True)
-    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=True)
+    sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=True)
     presencas = db.relationship('Presenca', backref='aula')
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
