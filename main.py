@@ -22,13 +22,64 @@ Formato:
 aulas_a_decorrer = {}
 
 
+@main.route("/marcarPresenca", methods=["PUT"])
+def arduino_presenca():
+    # Verifica se o tipo de conteúdo da solicitação é "application/json"
+    # e se o cabeçalho "User-Agent" contém a ‘string’ "ArduinoULHT"
+    if request.content_type != "application/json" or "ArduinoULHT" not in request.headers.get("User-Agent"):
+        # Se não atender às condições acima, retorna uma resposta JSON com o erro 400
+        jsonify(error="[CRITICAL] O cabeçalho da requisição é inválido!"), 400
+
+    # Obtém os dados JSON da solicitação POST
+    params = request.get_json()
+    arduino_id, disp_uid = params['identifier'].strip(), params['sent_uid'].strip()
+
+    # Verifica se os dados JSON obtidos são inválidos
+    if not arduino_id or not disp_uid:
+        # Se atender às condições acima, retorna uma resposta JSON com o erro 400 Bad Request
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Consulta o modelo de banco de dados "Sala" usando o valor da chave "identifier" obtida dos dados JSON
+    sala = Sala.query.filter_by(arduino_id=arduino_id).first()
+
+    # Verifica se a sala obtida da consulta não existe ou se o ‘id’ da sala não está presente na lista
+    # "aulas_a_decorrer"
+    if not sala or sala.id not in aulas_a_decorrer:
+        # Se atender a uma das condições acima, retorna uma resposta JSON com o erro 404 Not Found
+        return jsonify(error="A sala não foi encontrada ou não existe marcação ativa."), 404
+
+    # Guarda o dicionário da sala selecionada numa variável
+    sala_selecionada = aulas_a_decorrer[sala.id]
+
+    # Verifica se o valor da chave "status" da sala selecionada é igual a "STOP"
+    if sala_selecionada['status'] == "STOP":
+        # Se atender à condição acima, retorna uma resposta JSON com o erro 403 Forbidden
+        return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
+
+    # Gera um hash do UID do dispositivo do aluno obtida dos dados JSON usando o algoritmo de hash SHA256
+    aluno_uid_hash = generate_password_hash(disp_uid, method='sha256')
+
+    # Consulta os modelos da base de dados "Aluno" e "Dispositivo" usando o valor hash do UID gerado anteriormente
+    aluno = Aluno.query.join(Dispositivo).filter(Dispositivo.uid == aluno_uid_hash).first()
+
+    # Verifica se o aluno obtido da consulta não existe
+    if not aluno:
+        # Se atender à condição acima, retorna uma resposta JSON com o erro 404 Not Found
+        return jsonify(error="Não existe nenhum aluno associado ao UID lido."), 404
+
+    # Caso todas as condições anteriores se verificarem verdadeiras, adiciona o número do aluno à lista de presenças
+    # e retorna uma resposta JSON com o código 200 OK
+    sala_selecionada['alunos'].append(aluno.id)
+    return jsonify(message="Marcação da presença efetuada com sucesso."), 201
+
+
 @main.route("/getPresencas", methods=["GET"])
 def get_presencas():
     if not request.args or not request.args.get('sala'):
         return jsonify(error="Falta o parâmetro 'sala'"), 400
 
-    return jsonify(alunos=aulas_a_decorrer[request.args.get('sala')]['alunos']), 200
-
+    sala = Sala.query.filter_by(name=request.args.get('sala')).first()
+    return jsonify(alunos=aulas_a_decorrer[sala.id]['alunos']), 200
 
 # @main.route("/iniciarAula", methods=["GET", "POST"])
 # def iniciar_aula():
@@ -152,52 +203,6 @@ def get_presencas():
 #     return 0
 #
 #
-# @main.route("/marcarPresenca", methods=["POST"])
-# def arduino_presenca():
-#     # Verifica se o tipo de conteúdo da solicitação é "application/json"
-#     # e se o cabeçalho "User-Agent" contém a ‘string’ "ArduinoULHT"
-#     if request.content_type != "application/json" or "ArduinoULHT" not in request.headers.get("User-Agent"):
-#         # Se não atender às condições acima, retorna uma resposta HTTP 412 Precondition Failed
-#         abort(412)
-#
-#     # Obtém os dados JSON da solicitação POST
-#     data = request.get_json()
-#
-#     # Verifica se os dados JSON obtidos são válidos e contêm as chaves "identifier" e "aluno"
-#     if not data or 'identifier' not in data or 'aluno_uid' not in data:
-#         # Se não atender às condições acima, retorna uma resposta HTTP 404 Not Found
-#         abort(404)
-#
-#     # Consulta o modelo de banco de dados "Sala" usando o valor da chave "identifier" obtida dos dados JSON
-#     sala = Sala.query.filter_by(arduino_id=data['identifier']).first()
-#
-#     # Verifica se a sala obtida da consulta não existe ou se o nome da sala não está presente na lista
-#     # "aulas_a_decorrer"
-#     if not sala or sala.name not in aulas_a_decorrer:
-#         # Se não atender às condições acima, retorna o valor -1 como resposta
-#         return -1
-#
-#     # Verifica se o valor da chave "status" do dicionário correspondente ao nome da sala na lista "aulas_a_decorrer"
-#     # é igual a "STOP"
-#     if aulas_a_decorrer[sala.name]['status'] == "STOP":
-#         # Se não atender à condição acima, retorna o valor -2 como resposta
-#         return -2
-#
-#     # Gera um hash do UID do dispositivo do aluno obtida dos dados JSON usando o algoritmo de hash SHA256
-#     req_uid = generate_password_hash(data['aluno_uid'], method='sha256')
-#
-#     # Consulta os modelos de banco de dados "Aluno" e "Dispositivo" usando o valor hash do UID gerado anteriormente
-#     aluno = Aluno.query.join(Dispositivo).filter(Dispositivo.uid == req_uid).first()
-#
-#     # Verifica se o aluno obtido da consulta não existe
-#     if not aluno:
-#         # Se não atender à condição acima, retorna o valor -3 como resposta
-#         return -3
-#
-#     # Caso todas as condições anteriores se verificarem verdadeiras, adiciona o número do aluno à lista de presenças
-#     # e retorna OK como resposta
-#     aulas_a_decorrer[sala.name]['alunos'].append(aluno.id)
-#     return "OK"
 #
 #
 # @main.route("/registarAluno", methods=["GET", "POST"])

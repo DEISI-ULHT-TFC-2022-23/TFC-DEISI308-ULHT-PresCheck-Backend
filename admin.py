@@ -4,17 +4,18 @@ from models import *
 
 admin = Blueprint('admin', __name__)
 
+demo_username = "demo"
+demo_password = "demo"
 
-@admin.route("/admin", methods=["GET"])
-def admin_index():
+
+@admin.route("/admin/demo/criar", methods=["GET"])
+def admin_demo_criar():
     db.drop_all()
     db.create_all()
-    user = User(username="user", password=generate_password_hash("password"))
-    user.is_admin = True
-    user.is_active = True
+    user = User(username=demo_username, password=generate_password_hash(demo_password, method='sha256'))
     db.session.add(user)
     db.session.commit()
-    select_user = User.query.filter_by(username="user").first()
-    return jsonify(id=select_user.id, username=select_user.username, password="password",
-                   is_admin=select_user.is_admin, is_active=select_user.is_active,
-                   created_at=select_user.created_at), 200
+    get_user = User.query.filter_by(username=user.username).first()
+    return jsonify(id=get_user.id, username=get_user.username, password="password",
+                   is_admin=get_user.is_admin, is_active=get_user.is_active,
+                   created_at=get_user.created_at), 200

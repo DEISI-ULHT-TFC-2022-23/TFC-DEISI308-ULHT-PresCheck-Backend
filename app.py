@@ -13,10 +13,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 CORS(app)
 
-# Configuração da chave secreta para o aplicativo
+# Configuração da chave secreta para a aplicação
 app.config['SECRET_KEY'] = "HxmSDFCI:'Jt^!f5>}YHX3yt3Y5{oU-ULHT"
 
-# Configuração da URI do banco de dados SQLAlchemy
+# Configuração da URI da base de dados SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'ulht-prescheck.db')
 
 db.init_app(app)
