@@ -17,5 +17,5 @@ def admin_demo_criar():
     db.session.commit()
     get_user = User.query.filter_by(username=user.username).first()
     return jsonify(id=get_user.id, username=get_user.username, password="password",
-                   is_admin=get_user.is_admin, is_active=get_user.is_active,
+                   is_admin=get_user.e_admin, is_active=get_user.esta_ativo,
                    created_at=get_user.created_at), 200

@@ -9,8 +9,8 @@ auth = Blueprint('auth', __name__)
 @auth.route("/login", methods=["POST"])
 def login():
     # Recebe os dados enviados no corpo do request
-    username = request.json.get('username')
-    password = request.json.get('password')
+    params = request.get_json()
+    username, password = params['username'], params['password']
 
     # Verifica se os parâmetros foram recebidos
     if not username or not password:
@@ -26,11 +26,11 @@ def login():
         return jsonify(error='Credenciais inválidas. Verifique os seus dados e tente novamente.'), 401
 
     # Verifica se o utilizador está ativo
-    if not user.is_active:
+    if not user.esta_ativo:
         # Retorna JSON do erro
         return jsonify(error='O seu utilizador está desativado. Contacte a Secretaria do DEISI.'), 403
 
     # Cria o token de sessão do utilizador
     token = uuid4()
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    return jsonify(token=token, professor_id=user.professor_id, is_admin=user.is_admin), 200
+    return jsonify(token=token, professor_id=user.professor_id, is_admin=user.e_admin), 200
