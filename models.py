@@ -10,15 +10,14 @@ professor_unidade = db.Table('professor_unidade',
 
 
 class Unidade(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    codigo = db.Column(db.Integer, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     aulas = db.relationship('Aula', backref='unidade')
     criado_em = db.Column(db.DateTime, server_default=func.now())
     atualizado_em = db.Column(db.DateTime, onupdate=func.now())
 
-    def __init__(self, codigo, nome):
-        self.codigo = codigo
+    def __init__(self, unidade_id, nome):
+        self.id = unidade_id
         self.nome = nome
 
     def __repr__(self):
@@ -40,10 +39,10 @@ class Professor(db.Model):
         self.id = professor_id
 
     def __repr__(self):
-        return '<Professor %r %r>' % (self.first_name, self.last_name)
+        return '<Professor %r>' % self.id
 
     def __str__(self):
-        return '%s %s' % (self.first_name, self.last_name)
+        return '%s' % self.id
 
 
 class User(db.Model):

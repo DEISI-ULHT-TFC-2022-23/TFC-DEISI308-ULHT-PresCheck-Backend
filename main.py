@@ -134,7 +134,7 @@ def get_unidades():
         return jsonify(error="Não existem professores com esse id"), 404
 
     # Retorna a lista de unidades associadas ao professor como resposta e com código de status 200 (OK)
-    return jsonify(unidades=professor.unidades), 200
+    return jsonify(unidades=[{'unidade_id': unidade.id, 'unidade_nome': unidade.nome} for unidade in professor.unidades]), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
