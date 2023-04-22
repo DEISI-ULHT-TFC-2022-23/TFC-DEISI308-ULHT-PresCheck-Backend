@@ -112,7 +112,7 @@ def marcar_presenca():
     if sala_selecionada['estado'] == "STOP":
         return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
 
-    # Verifica se o aluno inserio já consta na lista de alunos da aula a decorrer
+    # Verifica se o aluno inserido já consta na lista de alunos da aula a decorrer
     if num_aluno in sala_selecionada['alunos']:
         return jsonify(error="Este aluno já tem a sua presença registada."), 409
 
@@ -140,15 +140,14 @@ def eliminar_presenca():
     # Guarda o dicionário da sala selecionada numa variável
     sala_selecionada = aulas_a_decorrer[sala_a_controlar]
 
-    # Verifica se o valor da chave "status" da sala selecionada é igual a "STOP"
-    if sala_selecionada['estado'] == "STOP":
-        return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
+    # Verifica se o aluno inserido não consta na lista de alunos da aula a decorrer
+    if num_aluno not in sala_selecionada['alunos']:
+        return jsonify(error="Este aluno não consta na lista de presenças."), 409
 
     # Adiciona o número do aluno à lista de presenças,
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
-    sala_selecionada['alunos'].append(num_aluno)
-    sala_selecionada['alunos_novos'] = True
-    return jsonify(message="Marcação da presença efetuada com sucesso."), 201
+    sala_selecionada['alunos'].remove(num_aluno)
+    return jsonify(message="Aluno retirado da lista com sucesso"), 200
 
 
 @main.route("/unidades", methods=["GET"])
