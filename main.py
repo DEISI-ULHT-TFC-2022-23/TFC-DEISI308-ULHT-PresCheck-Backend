@@ -36,10 +36,6 @@ def get_presencas():
     # Obtém a sala selecionada a partir do dicionário de aulas em andamento
     sala_selecionada = aulas_a_decorrer[request.args.get('sala')]
 
-    # Verifica se não há alunos novos na lista de presença da sala
-    if not sala_selecionada['alunos_novos']:
-        return jsonify(error="Sem alterações na lista de alunos."), 304
-
     # Avisa que não há novos alunos na lista de presença da sala
     sala_selecionada['alunos_novos'] = False
 
@@ -116,6 +112,10 @@ def marcar_presenca():
     if sala_selecionada['estado'] == "STOP":
         return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
 
+    # Verifica se o aluno inserio já consta na lista de alunos da aula a decorrer
+    if num_aluno in sala_selecionada['alunos']:
+        return jsonify(error="Este aluno já tem a sua presença registada."), 409
+
     # Adiciona o número do aluno à lista de presenças,
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
     sala_selecionada['alunos'].append(num_aluno)
@@ -173,13 +173,15 @@ def get_aulas_por_professor():
     if not request.args or not request.args.get('professor_id'):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    # Obtém o professor_id a partir dos argumentos da requisição e
-    # cria uma lista com as chaves (nomes das salas) das aulas que decorrem com o professor_id especificado
-    professor_id = int(request.args.get('professor_id'))
-    aulas_ativas = [k for k, v in aulas_a_decorrer.items() if v['professor_id'] == professor_id]
+    # Cria uma lista com o nome da sala e o nome da unidade correspondente
+    aulas_ativas = {}
+    for sala, dados in aulas_a_decorrer.items():
+        if dados['professor_id'] == request.args.get('professor_id'):
+            unidade = Unidade.query.get(dados['unidade_id'])
+            aulas_ativas = {'sala': sala, 'unidade': unidade.nome}
 
-    # Retorna a lista de nomes das salas das aulas ativas com o professor_id especificado em formato JSON
-    return jsonify(aulas_ativas=aulas_ativas), 200
+    # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
+    return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade']), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
@@ -202,7 +204,7 @@ def iniciar_aula():
 
     # Cria um dicionário com os dados da aula que será iniciada
     data = {
-        'status': 'GO',
+        'estado': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
         'timestamp_aula_iniciada': datetime.datetime.now().timestamp(),
@@ -237,7 +239,7 @@ def controlar_aula():
             # Obtém os dados da sala em andamento
             dados_sala = aulas_a_decorrer[sala_param]
             # Obtém a sala registada na base de dados a partir do nome
-            sala = Sala.query.filter_by(name=sala_param).first()
+            sala = Sala.query.filter_by(nome=sala_param).first()
             # Cria uma aula na base de dados com as informações da sala em andamento
             nova_aula = Aula(data_aula=datetime.date.today(),
                              unidade_id=dados_sala['unidade_id'],
