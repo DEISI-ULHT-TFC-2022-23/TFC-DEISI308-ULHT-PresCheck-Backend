@@ -10,8 +10,6 @@ demo_password = "demo"
 
 @admin.route("/admin/demo/criar", methods=["GET"])
 def admin_demo_criar():
-    db.drop_all()
-    db.create_all()
     user = User(username=demo_username, password=generate_password_hash(demo_password, method='sha256'))
     user.is_active = True
     user.is_admin = True
@@ -40,7 +38,7 @@ def admin_prof_criar():
 
 @admin.route("/admin/sala/criar", methods=["GET"])
 def admin_sala_criar():
-    sala = Sala("F.2.3", "ndkjfdkjlkdsfsdgj92ii349u98")
+    sala = Sala("F.2.3", generate_password_hash("123", method="sha256"))
     db.session.add(sala)
     db.session.commit()
-    return jsonify(id=sala.name), 200
+    return jsonify(id=sala.nome), 200

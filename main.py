@@ -62,7 +62,8 @@ def arduino_presenca():
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     # Consulta o modelo de banco de dados "Sala" usando o valor da chave "identifier" obtida dos dados JSON
-    sala = Sala.query.filter_by(arduino_id=arduino_id).first()
+    arduino_id_hash = generate_password_hash(arduino_id, method='sha256')
+    sala = Sala.query.filter_by(arduino_id=arduino_id_hash).first()
 
     # Verifica se a sala obtida da consulta não existe ou se o ‘id’ da sala não está presente na lista
     # "aulas_a_decorrer"
