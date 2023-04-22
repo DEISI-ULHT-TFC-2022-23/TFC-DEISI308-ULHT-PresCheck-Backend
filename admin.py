@@ -36,3 +36,11 @@ def admin_prof_criar():
     db.session.commit()
     get_prof = Professor.query.get(1)
     return jsonify(id=get_prof.id, unidades=professor.get_unidades()), 200
+
+
+@admin.route("/admin/sala/criar", methods=["GET"])
+def admin_sala_criar():
+    sala = Sala("F.2.3", "ndkjfdkjlkdsfsdgj92ii349u98")
+    db.session.add(sala)
+    db.session.commit()
+    return jsonify(id=sala.name), 200
