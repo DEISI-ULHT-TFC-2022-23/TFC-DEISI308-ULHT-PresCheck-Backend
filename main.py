@@ -14,6 +14,7 @@ Formato:
         estado: STOP/GO,
         unidade_id: (ID da unidade),
         professor_id: (ID do professor),
+        timestamp_aula_iniciada: Datetime.timestamp,
         alunos : [(Número aluno 1), (Número aluno 2), ...],
         alunos_novos : True/False
     }
@@ -26,7 +27,7 @@ aulas_a_decorrer = {}
 def get_presencas():
     # Verifica se não há argumentos na requisição ou se o argumento 'sala' está em falta
     if not request.args or not request.args.get('sala'):
-        return jsonify(error="Falta o parâmetro 'sala'"), 400
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     # Verifica se a sala informada não está registrada nas aulas em andamento
     if request.args.get('sala') not in aulas_a_decorrer:
@@ -122,11 +123,39 @@ def marcar_presenca():
     return jsonify(message="Marcação da presença efetuada com sucesso."), 201
 
 
+@main.route("/presencas/eliminar", methods=["POST"])
+def eliminar_presenca():
+    # Obtém os dados JSON da solicitação POST
+    params = request.get_json()
+    sala_a_controlar, num_aluno = params['sala'].strip(), params['aluno'].strip()
+
+    # Verifica se os dados JSON obtidos são inválidos
+    if not sala_a_controlar or not num_aluno:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Verifica se a sala a controlar está registada no dicionário "aulas_a_decorrer"
+    if sala_a_controlar not in aulas_a_decorrer:
+        return jsonify(error="A sala não tem nenhum registo ativo."), 404
+
+    # Guarda o dicionário da sala selecionada numa variável
+    sala_selecionada = aulas_a_decorrer[sala_a_controlar]
+
+    # Verifica se o valor da chave "status" da sala selecionada é igual a "STOP"
+    if sala_selecionada['estado'] == "STOP":
+        return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
+
+    # Adiciona o número do aluno à lista de presenças,
+    # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
+    sala_selecionada['alunos'].append(num_aluno)
+    sala_selecionada['alunos_novos'] = True
+    return jsonify(message="Marcação da presença efetuada com sucesso."), 201
+
+
 @main.route("/unidades", methods=["GET"])
 def get_unidades():
     # Verifica se não há argumentos na requisição ou se o argumento 'professor_id' está em falta
     if not request.args or not request.args.get('professor_id'):
-        return jsonify(error="Falta o parâmetro 'professor_id'"), 400
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     professor = Professor.query.get(request.args.get('professor_id'))
 
@@ -136,6 +165,21 @@ def get_unidades():
 
     # Retorna a lista de unidades associadas ao professor como resposta e com código de status 200 (OK)
     return jsonify(unidades=professor.get_unidades()), 200
+
+
+@main.route("/aulas", methods=["GET"])
+def get_aulas_por_professor():
+    # Verifica se não há argumentos na requisição ou se o argumento 'professor_id' está em falta
+    if not request.args or not request.args.get('professor_id'):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Obtém o professor_id a partir dos argumentos da requisição e
+    # cria uma lista com as chaves (nomes das salas) das aulas que decorrem com o professor_id especificado
+    professor_id = int(request.args.get('professor_id'))
+    aulas_ativas = [k for k, v in aulas_a_decorrer.items() if v['professor_id'] == professor_id]
+
+    # Retorna a lista de nomes das salas das aulas ativas com o professor_id especificado em formato JSON
+    return jsonify(aulas_ativas=aulas_ativas), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
@@ -161,6 +205,7 @@ def iniciar_aula():
         'status': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
+        'timestamp_aula_iniciada': datetime.datetime.now().timestamp(),
         'alunos': [],
         'alunos_novos': False
     }
@@ -220,18 +265,14 @@ def controlar_aula():
     return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
 
 
-@main.route("/aula/exportar", methods=["POST"])
+@main.route("/aula/exportar", methods=["GET"])
 def exportar_aula():
-    # Obtém os dados JSON da solicitação POST
-    params = request.get_json()
-    aula_param = params['aula_id'].strip()
-
-    # Verifica se os dados JSON obtidos são inválidos
-    if not aula_param:
+    # Verifica se não há argumentos na requisição ou se o argumento 'aula_id' está em falta
+    if not request.args or not request.args.get('aula_id'):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     # Busca todas as presenças associadas à aula e verifica se existe alguma presença
-    presencas_aula = Presenca.query.filter_by(aula_id=aula_param).all()
+    presencas_aula = Presenca.query.filter_by(aula_id=request.args.get('aula_id')).all()
     if not presencas_aula:
         return jsonify(error="Não existem presençar marcadas para esta aula."), 404
 
