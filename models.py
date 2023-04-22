@@ -13,8 +13,8 @@ class Unidade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     aulas = db.relationship('Aula', backref='unidade')
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, unidade_id, nome):
         self.id = unidade_id
@@ -32,8 +32,8 @@ class Professor(db.Model):
     user = db.relationship('User', backref='professor')
     unidades = db.relationship('Unidade', secondary='professor_unidade', backref='professores')
     aulas = db.relationship('Aula', backref='professor')
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, professor_id):
         self.id = professor_id
@@ -44,22 +44,25 @@ class Professor(db.Model):
     def __str__(self):
         return '%s' % self.id
 
+    def get_unidades(self):
+        return [{'id': unidade.id, 'nome': unidade.nome} for unidade in self.unidades]
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(8), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
-    e_admin = db.Column(db.Boolean(), nullable=False)
-    esta_ativo = db.Column(db.Boolean(), nullable=False)
+    is_admin = db.Column(db.Boolean(), nullable=False)
+    is_active = db.Column(db.Boolean(), nullable=False)
     professor_id = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True)
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.e_admin = False
-        self.esta_ativo = False
+        self.is_admin = False
+        self.is_active = False
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -72,8 +75,8 @@ class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     presencas = db.relationship('Presenca', backref='aluno')
     dispositivos = db.relationship('Dispositivo', backref='aluno')
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, aluno_id):
         self.id = aluno_id
@@ -89,8 +92,8 @@ class Dispositivo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uid = db.Column(db.String(100), unique=True, nullable=False)
     aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, uid, aluno_id):
         self.uid = uid
@@ -108,8 +111,8 @@ class Sala(db.Model):
     nome = db.Column(db.String(7), nullable=False, unique=True)
     arduino_id = db.Column(db.String(100), nullable=False, unique=True)
     aulas = db.relationship('Aula', backref='sala')
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, nome, arduino_id):
         self.nome = nome
@@ -129,8 +132,8 @@ class Aula(db.Model):
     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
     presencas = db.relationship('Presenca', backref='aula')
-    criado_em = db.Column(db.DateTime, server_default=func.now())
-    atualizado_em = db.Column(db.DateTime, onupdate=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __init__(self, data_aula, unidade_id, professor_id, sala_id):
         self.data_aula = data_aula
@@ -151,7 +154,7 @@ class Presenca(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     aula_id = db.Column(db.Integer, db.ForeignKey('aula.id'))
     aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'))
-    criado_em = db.Column(db.DateTime, server_default=func.now())
+    created_at = db.Column(db.DateTime, server_default=func.now())
 
     def __init__(self, aula_id, aluno_id):
         self.aula_id = aula_id

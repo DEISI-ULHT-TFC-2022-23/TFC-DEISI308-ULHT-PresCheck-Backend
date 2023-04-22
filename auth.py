@@ -26,11 +26,11 @@ def login():
         return jsonify(error='Credenciais inválidas. Verifique os seus dados e tente novamente.'), 401
 
     # Verifica se o utilizador está ativo
-    if not user.esta_ativo:
+    if not user.is_active:
         # Retorna JSON do erro
         return jsonify(error='O seu utilizador está desativado. Contacte a Secretaria do DEISI.'), 403
 
     # Cria o token de sessão do utilizador
     token = uuid4()
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    return jsonify(token=token, professor_id=user.professor_id, is_admin=user.e_admin), 200
+    return jsonify(token=token, professor_id=user.professor_id, is_admin=user.is_admin), 200
