@@ -23,6 +23,144 @@ Formato:
 aulas_a_decorrer = {}
 
 
+@main.route("/unidades", methods=["GET"])
+def get_unidades():
+    # Verifica se não há argumentos na requisição ou se o argumento 'professor_id' está em falta
+    if not request.args or not request.args.get('professor_id'):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    professor = Professor.query.get(request.args.get('professor_id'))
+
+    # Verifica se o professor não existe na base de dados
+    if not professor:
+        return jsonify(error="Não existem professores com esse id"), 404
+
+    # Retorna a lista de unidades associadas ao professor como resposta e com código de status 200 (OK)
+    return jsonify(unidades=professor.get_unidades()), 200
+
+
+@main.route("/aulas", methods=["GET"])
+def get_aulas():
+    # Verifica se não há argumentos na requisição ou se o argumento 'professor_id' está em falta
+    if not request.args or not request.args.get('professor_id'):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Cria uma lista com o nome da sala e o nome da unidade correspondente
+    aulas_ativas = {}
+    for sala, dados in aulas_a_decorrer.items():
+        if dados['professor_id'] == request.args.get('professor_id'):
+            unidade = Unidade.query.get(dados['unidade_id'])
+            aulas_ativas = {'sala': sala, 'unidade': unidade.nome}
+
+    # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
+    return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade']), 200
+
+
+@main.route("/aula/iniciar", methods=["POST"])
+def iniciar_aula():
+    # Obtém os dados JSON da solicitação POST
+    params = request.get_json()
+    sala_a_abrir, professor_id, unidade_id = params['sala'], params['professor_id'], params['unidade_id']
+
+    # Verifica se os dados JSON obtidos são inválidos
+    if not sala_a_abrir or not professor_id or not unidade_id:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Verifica se a sala pretendida não existe na base de dados
+    if not Sala.query.filter_by(nome=sala_a_abrir).first():
+        return jsonify(error="Não existem registos dessa sala."), 404
+
+    # Verifica se a sala já está registada e ativa nas aulas em andamento
+    if sala_a_abrir in aulas_a_decorrer:
+        return jsonify(error="Já existe um registo ativo desta sala."), 409
+
+    # Cria um dicionário com os dados da aula que será iniciada
+    data = {
+        'estado': 'GO',
+        'unidade_id': unidade_id,
+        'professor_id': professor_id,
+        'timestamp_aula_iniciada': datetime.datetime.now().timestamp(),
+        'alunos': [],
+        'alunos_novos': False
+    }
+
+    # Adiciona a aula em andamento à lista de aulas em andamento, usando o nome da sala como chave
+    aulas_a_decorrer[sala_a_abrir] = data
+    return jsonify(message="Aula iniciada."), 200
+
+
+@main.route("/aula/controlar", methods=["POST"])
+def controlar_aula():
+    # Obtém os dados JSON da solicitação POST
+    params = request.get_json()
+    sala_param, acao_param = params['sala'], params['acao']
+
+    # Verifica se os dados JSON obtidos são inválidos
+    if not sala_param or not acao_param:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Verifica qual ação foi realizada no formulário
+    match acao_param:
+        case "GO":
+            # Atualiza o estado da aula em andamento para "GO"
+            aulas_a_decorrer[sala_param]['estado'] = 'GO'
+        case "STOP":
+            # Atualiza o estado da aula em andamento para "STOP"
+            aulas_a_decorrer[sala_param]['estado'] = 'STOP'
+        case "FINISH":
+            # Obtém os dados da sala em andamento
+            dados_sala = aulas_a_decorrer[sala_param]
+            # Obtém a sala registada na base de dados a partir do nome
+            sala = Sala.query.filter_by(nome=sala_param).first()
+            # Cria uma aula na base de dados com as informações da sala em andamento
+            nova_aula = Aula(data_aula=datetime.date.today(),
+                             unidade_id=dados_sala['unidade_id'],
+                             professor_id=dados_sala['professor_id'],
+                             sala_id=sala.id)
+            db.session.add(nova_aula)
+
+            # Para cada aluno presente na sala em andamento, cria uma presença na base de dados
+            for aluno in dados_sala['alunos']:
+                aluno_selecionado = Aluno.query.get(aluno)
+                if not aluno_selecionado:
+                    aluno_selecionado = Aluno(aluno_id=aluno)
+                    db.session.add(aluno_selecionado)
+
+                nova_presenca = Presenca(aula_id=nova_aula.id,
+                                         aluno_id=aluno_selecionado.id)
+                db.session.add(nova_presenca)
+
+            db.session.commit()
+            # Remove a sala em andamento da lista de aulas em andamento e retorna o código a informar que foi processado
+            del aulas_a_decorrer[sala_param]
+            return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula.id), 204
+
+    # Retorna o estado da aula atualizado
+    return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
+
+
+@main.route("/aula/exportar", methods=["GET"])
+def exportar_aula():
+    # Verifica se não há argumentos na requisição ou se o argumento 'aula_id' está em falta
+    if not request.args or not request.args.get('aula_id'):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    # Busca todas as presenças associadas à aula e verifica se existe alguma presença
+    presencas_aula = Presenca.query.filter_by(aula_id=request.args.get('aula_id')).all()
+    if not presencas_aula:
+        return jsonify(error="Não existem presençar marcadas para esta aula."), 404
+
+    # Itera sobre todas as presenças e guarda na lista corretamente.
+    data = []
+    for presenca in presencas_aula:
+        aluno_id = presenca.aluno_id
+        created_at = presenca.created_at.strftime('%d/%m/%Y às %H:%M')
+        data.append([aluno_id, created_at])
+
+    # Retorna a lista de todas as presenças
+    return jsonify(presencas=data), 200
+
+
 @main.route("/presencas", methods=["GET"])
 def get_presencas():
     # Verifica se não há argumentos na requisição ou se o argumento 'sala' está em falta
@@ -148,141 +286,3 @@ def eliminar_presenca():
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
     sala_selecionada['alunos'].remove(num_aluno)
     return jsonify(message="Aluno retirado da lista com sucesso"), 200
-
-
-@main.route("/unidades", methods=["GET"])
-def get_unidades():
-    # Verifica se não há argumentos na requisição ou se o argumento 'professor_id' está em falta
-    if not request.args or not request.args.get('professor_id'):
-        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
-
-    professor = Professor.query.get(request.args.get('professor_id'))
-
-    # Verifica se o professor não existe na base de dados
-    if not professor:
-        return jsonify(error="Não existem professores com esse id"), 404
-
-    # Retorna a lista de unidades associadas ao professor como resposta e com código de status 200 (OK)
-    return jsonify(unidades=professor.get_unidades()), 200
-
-
-@main.route("/aulas", methods=["GET"])
-def get_aulas_por_professor():
-    # Verifica se não há argumentos na requisição ou se o argumento 'professor_id' está em falta
-    if not request.args or not request.args.get('professor_id'):
-        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
-
-    # Cria uma lista com o nome da sala e o nome da unidade correspondente
-    aulas_ativas = {}
-    for sala, dados in aulas_a_decorrer.items():
-        if dados['professor_id'] == request.args.get('professor_id'):
-            unidade = Unidade.query.get(dados['unidade_id'])
-            aulas_ativas = {'sala': sala, 'unidade': unidade.nome}
-
-    # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
-    return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade']), 200
-
-
-@main.route("/aula/iniciar", methods=["POST"])
-def iniciar_aula():
-    # Obtém os dados JSON da solicitação POST
-    params = request.get_json()
-    sala_a_abrir, professor_id, unidade_id = params['sala'], params['professor_id'], params['unidade_id']
-
-    # Verifica se os dados JSON obtidos são inválidos
-    if not sala_a_abrir or not professor_id or not unidade_id:
-        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
-
-    # Verifica se a sala pretendida não existe na base de dados
-    if not Sala.query.filter_by(nome=sala_a_abrir).first():
-        return jsonify(error="Não existem registos dessa sala."), 404
-
-    # Verifica se a sala já está registada e ativa nas aulas em andamento
-    if sala_a_abrir in aulas_a_decorrer:
-        return jsonify(error="Já existe um registo ativo desta sala."), 409
-
-    # Cria um dicionário com os dados da aula que será iniciada
-    data = {
-        'estado': 'GO',
-        'unidade_id': unidade_id,
-        'professor_id': professor_id,
-        'timestamp_aula_iniciada': datetime.datetime.now().timestamp(),
-        'alunos': [],
-        'alunos_novos': False
-    }
-
-    # Adiciona a aula em andamento à lista de aulas em andamento, usando o nome da sala como chave
-    aulas_a_decorrer[sala_a_abrir] = data
-    return jsonify(message="Aula iniciada."), 200
-
-
-@main.route("/aula/controlar", methods=["POST"])
-def controlar_aula():
-    # Obtém os dados JSON da solicitação POST
-    params = request.get_json()
-    sala_param, acao_param = params['sala'], params['acao']
-
-    # Verifica se os dados JSON obtidos são inválidos
-    if not sala_param or not acao_param:
-        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
-
-    # Verifica qual ação foi realizada no formulário
-    match acao_param:
-        case "GO":
-            # Atualiza o estado da aula em andamento para "GO"
-            aulas_a_decorrer[sala_param]['estado'] = 'GO'
-        case "STOP":
-            # Atualiza o estado da aula em andamento para "STOP"
-            aulas_a_decorrer[sala_param]['estado'] = 'STOP'
-        case "FINISH":
-            # Obtém os dados da sala em andamento
-            dados_sala = aulas_a_decorrer[sala_param]
-            # Obtém a sala registada na base de dados a partir do nome
-            sala = Sala.query.filter_by(nome=sala_param).first()
-            # Cria uma aula na base de dados com as informações da sala em andamento
-            nova_aula = Aula(data_aula=datetime.date.today(),
-                             unidade_id=dados_sala['unidade_id'],
-                             professor_id=dados_sala['professor_id'],
-                             sala_id=sala.id)
-            db.session.add(nova_aula)
-
-            # Para cada aluno presente na sala em andamento, cria uma presença na base de dados
-            for aluno in dados_sala['alunos']:
-                aluno_selecionado = Aluno.query.get(aluno)
-                if not aluno_selecionado:
-                    aluno_selecionado = Aluno(aluno_id=aluno)
-                    db.session.add(aluno_selecionado)
-
-                nova_presenca = Presenca(aula_id=nova_aula.id,
-                                         aluno_id=aluno_selecionado.id)
-                db.session.add(nova_presenca)
-
-            db.session.commit()
-            # Remove a sala em andamento da lista de aulas em andamento e retorna o código a informar que foi processado
-            del aulas_a_decorrer[sala_param]
-            return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula.id), 204
-
-    # Retorna o estado da aula atualizado
-    return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
-
-
-@main.route("/aula/exportar", methods=["GET"])
-def exportar_aula():
-    # Verifica se não há argumentos na requisição ou se o argumento 'aula_id' está em falta
-    if not request.args or not request.args.get('aula_id'):
-        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
-
-    # Busca todas as presenças associadas à aula e verifica se existe alguma presença
-    presencas_aula = Presenca.query.filter_by(aula_id=request.args.get('aula_id')).all()
-    if not presencas_aula:
-        return jsonify(error="Não existem presençar marcadas para esta aula."), 404
-
-    # Itera sobre todas as presenças e guarda na lista corretamente.
-    data = []
-    for presenca in presencas_aula:
-        aluno_id = presenca.aluno_id
-        created_at = presenca.created_at.strftime('%d/%m/%Y às %H:%M')
-        data.append([aluno_id, created_at])
-
-    # Retorna a lista de todas as presenças
-    return jsonify(presencas=data), 200
