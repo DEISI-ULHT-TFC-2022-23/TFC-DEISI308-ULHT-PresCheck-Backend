@@ -104,9 +104,12 @@ def controlar_aula():
         case "GO":
             # Atualiza o estado da aula em andamento para "GO"
             aulas_a_decorrer[sala_param]['estado'] = 'GO'
+            return jsonify(state="GO"), 200
         case "STOP":
             # Atualiza o estado da aula em andamento para "STOP"
             aulas_a_decorrer[sala_param]['estado'] = 'STOP'
+            return jsonify(state="STOP"), 200
+
         case "FINISH":
             # Obtém os dados da sala em andamento
             dados_sala = aulas_a_decorrer[sala_param]
