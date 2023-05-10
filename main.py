@@ -50,10 +50,10 @@ def get_aulas():
     for sala, dados in aulas_a_decorrer.items():
         if dados['professor_id'] == request.args.get('professor_id'):
             unidade = Unidade.query.get(dados['unidade_id'])
-            aulas_ativas = {'sala': sala, 'unidade': unidade.nome}
+            aulas_ativas = {'sala': sala, 'unidade': unidade.nome, 'estado':dados['estado']}
 
     # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
-    return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade']), 200
+    return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade'], state=aulas_ativas['estado']), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
