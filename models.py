@@ -30,7 +30,7 @@ class Unidade(db.Model):
     def create(unidade_id, nome):
         unidade_exists = Unidade.query.get(unidade_id)
         if unidade_exists:
-            return False
+            return False, unidade_exists
 
         unidade = Unidade()
         unidade.id = unidade_id
@@ -38,7 +38,7 @@ class Unidade(db.Model):
 
         db.session.add(unidade)
         db.session.commit()
-        return unidade
+        return True, unidade
 
 
 class Professor(db.Model):
@@ -70,7 +70,7 @@ class Professor(db.Model):
         prof_exists = Professor.query.get(professor_id)
 
         if prof_exists:
-            return False
+            return False, prof_exists
 
         prof = Professor()
         prof.id = professor_id
@@ -80,7 +80,7 @@ class Professor(db.Model):
 
         db.session.add(prof)
         db.session.commit()
-        return prof
+        return True, prof
 
 
 class User(db.Model):
@@ -137,7 +137,7 @@ class User(db.Model):
 
         user_exists = User.query.filter_by(username=username).first()
         if user_exists:
-            return False
+            return False, user_exists
 
         user = User()
         user.username = username
@@ -150,7 +150,7 @@ class User(db.Model):
 
         db.session.add(user)
         db.session.commit()
-        return user
+        return True, user
 
     @staticmethod
     def login_user(username, password):
@@ -161,7 +161,7 @@ class User(db.Model):
             if user.verify_password(password) and user.is_active:
                 return True, {'professor_id': user.professor_id, 'is_admin': user.is_admin}
 
-        return False
+        return False, {}
 
     @staticmethod
     def verify_user(username):
@@ -192,7 +192,7 @@ class Aluno(db.Model):
 
         db.session.add(aluno)
         db.session.commit()
-        return aluno
+        return True, aluno
 
     @staticmethod
     def get_aluno_by_disp(disp_uid):
@@ -217,11 +217,11 @@ class Dispositivo(db.Model):
     def create(uid, aluno_id):
         aluno_exists = Aluno.query.get(aluno_id)
         if not aluno_exists:
-            return False
+            return False, aluno_exists
 
         uid_exists = Dispositivo.query.filter_by(uid=uid).first()
         if uid_exists:
-            return False
+            return False, uid_exists
 
         disp = Dispositivo()
         disp.uid = uid
@@ -229,7 +229,7 @@ class Dispositivo(db.Model):
 
         db.session.add(disp)
         db.session.commit()
-        return disp
+        return True, disp
 
 
 class Sala(db.Model):
@@ -250,11 +250,11 @@ class Sala(db.Model):
     def create(nome, arduino_id):
         sala_exists = Sala.query.filter_by(nome=nome)
         if sala_exists:
-            return False
+            return False, sala_exists
 
         uid_exists = Sala.query.filter_by(arduino_id=arduino_id).first()
         if uid_exists:
-            return False
+            return False, uid_exists
 
         sala = Sala()
         sala.nome = nome
@@ -262,7 +262,7 @@ class Sala(db.Model):
 
         db.session.add(sala)
         db.session.commit()
-        return sala
+        return True, sala
 
     @staticmethod
     def get_sala_by_arduino(arduino_id):
@@ -297,7 +297,7 @@ class Aula(db.Model):
 
         db.session.add(aula)
         db.session.commit()
-        return aula
+        return True, aula
 
     @staticmethod
     def export(aula_id):
@@ -332,3 +332,4 @@ class Presenca(db.Model):
 
         db.session.add_all(presencas)
         db.session.commit()
+        return True, presencas

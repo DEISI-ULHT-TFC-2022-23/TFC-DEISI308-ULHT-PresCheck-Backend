@@ -118,11 +118,11 @@ def controlar_aula():
                                     dados_sala['professor_id'])
 
             # Cria as presenças na base de dados associadas à aula
-            Presenca.create(nova_aula.id, dados_sala['alunos'])
+            Presenca.create(nova_aula[1].id, dados_sala['alunos'])
 
             # Remove a sala em andamento da lista de aulas em andamento e retorna o código a informar que foi processado
             del aulas_a_decorrer[sala_param]
-            return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula.id), 204
+            return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 204
 
     # Retorna o estado da aula atualizado
     return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
