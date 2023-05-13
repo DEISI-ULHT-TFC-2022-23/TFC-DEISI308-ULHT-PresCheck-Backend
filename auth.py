@@ -1,8 +1,21 @@
 from flask import Blueprint, request, jsonify
+from flask_mail import Message
 from uuid import uuid4
+
 from models import User
 
 auth = Blueprint('auth', __name__)
+
+
+def send_email(user):
+    msg = Message()
+    msg.subject = "ULHT PresCheck - Recuperar senha"
+    msg.recipients = ["alexandre.nunes.garcia10@gmail.com"]
+    from flask import render_template
+    msg.html = render_template('reset_email.html', user=user.username, token="123")
+
+    from app import mail
+    mail.send(msg)
 
 
 @auth.route("/login", methods=["POST"])
@@ -51,8 +64,11 @@ def recuperar_senha():
         # Retorna JSON do erro
         return jsonify(error='O utilizador não existe. Contacte a Secretaria do DEISI.'), 404
 
-    # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    return jsonify(username=username, token=user.get_reset_token()), 200
+    # Envia o email para o utilizador
+    send_email(user)
+
+    # Retorna JSON de sucesso
+    return jsonify(message="Email enviado com sucesso."), 200
 
 
 @auth.route("/recuperar/alterar", methods=["POST"])

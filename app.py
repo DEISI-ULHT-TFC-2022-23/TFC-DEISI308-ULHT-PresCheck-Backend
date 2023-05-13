@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_mail import Mail
 from flask_cors import CORS
 
 from config import Configuration
@@ -7,11 +8,13 @@ from auth import auth as auth_blueprint
 from main import main as main_blueprint
 from models import db
 
+mail = Mail()
+
 app = Flask(__name__)
 app.config.from_object(Configuration)
 CORS(app)
 db.init_app(app)
-
+mail.init_app(app)
 
 with app.app_context():
     # Criação das tabelas da base de dados
