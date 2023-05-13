@@ -1,4 +1,3 @@
-import os
 from time import time
 
 import jwt
@@ -116,14 +115,19 @@ class User(db.Model):
         return check_password_hash(self.password, password)
 
     def get_reset_token(self, expires=500):
-        return jwt.encode({'reset_password': self.username,
-                           'exp': time() + expires},
-                          key=os.getenv('SECRET_KEY_FLASK'))
+        import app
+        return jwt.encode(payload={'reset_password': self.username,
+                                   'exp': time() + expires},
+                          key=app.Configuration.SECRET_KEY)
 
     @staticmethod
     def verify_reset_token(token):
         try:
-            username = jwt.decode(token, key=os.getenv('SECRET_KEY_FLASK'))['reset_password']
+            import app
+            data = jwt.decode(token, key=app.Configuration.SECRET_KEY)
+            username = data['reset_password']
+            if time() > data['exp']:
+                raise Exception
         except Exception:
             return None
         return User.query.filter_by(username=username).first()

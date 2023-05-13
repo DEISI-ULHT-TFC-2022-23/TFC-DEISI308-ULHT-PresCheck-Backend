@@ -12,7 +12,7 @@ def send_email(user):
     msg.subject = "ULHT PresCheck - Recuperar senha"
     msg.recipients = ["alexandre.nunes.garcia10@gmail.com"]
     from flask import render_template
-    msg.html = render_template('reset_email.html', user=user.username, token="123")
+    msg.html = render_template('reset_email.html', user=user.username, token=user.get_reset_token())
 
     from app import mail
     mail.send(msg)
