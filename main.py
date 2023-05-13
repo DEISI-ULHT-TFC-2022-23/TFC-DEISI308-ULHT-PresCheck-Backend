@@ -1,7 +1,6 @@
 import datetime
 
 from flask import Blueprint, request, jsonify
-from werkzeug.security import generate_password_hash
 
 from models import *
 
@@ -29,14 +28,14 @@ def get_unidades():
     if not request.args or not request.args.get('professor_id'):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    professor = Professor.query.get(request.args.get('professor_id'))
+    unidades = Professor.get_unidades(request.args.get('professor_id'))
 
     # Verifica se o professor não existe na base de dados
-    if not professor:
+    if not unidades:
         return jsonify(error="Não existem professores com esse id"), 404
 
     # Retorna a lista de unidades associadas ao professor como resposta e com código de status 200 (OK)
-    return jsonify(unidades=professor.get_unidades()), 200
+    return jsonify(unidades=unidades), 200
 
 
 @main.route("/aulas", methods=["GET"])
@@ -50,7 +49,7 @@ def get_aulas():
     for sala, dados in aulas_a_decorrer.items():
         if dados['professor_id'] == request.args.get('professor_id'):
             unidade = Unidade.query.get(dados['unidade_id'])
-            aulas_ativas = {'sala': sala, 'unidade': unidade.nome, 'estado':dados['estado']}
+            aulas_ativas = {'sala': sala, 'unidade': unidade.nome, 'estado': dados['estado']}
 
     # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
     return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade'], state=aulas_ativas['estado']), 200
@@ -113,27 +112,14 @@ def controlar_aula():
         case "FINISH":
             # Obtém os dados da sala em andamento
             dados_sala = aulas_a_decorrer[sala_param]
-            # Obtém a sala registada na base de dados a partir do nome
-            sala = Sala.query.filter_by(nome=sala_param).first()
             # Cria uma aula na base de dados com as informações da sala em andamento
-            nova_aula = Aula(data_aula=datetime.date.today(),
-                             unidade_id=dados_sala['unidade_id'],
-                             professor_id=dados_sala['professor_id'],
-                             sala_id=sala.id)
-            db.session.add(nova_aula)
+            nova_aula = Aula.create(sala_param,
+                                    dados_sala['unidade_id'],
+                                    dados_sala['professor_id'])
 
-            # Para cada aluno presente na sala em andamento, cria uma presença na base de dados
-            for aluno in dados_sala['alunos']:
-                aluno_selecionado = Aluno.query.get(aluno)
-                if not aluno_selecionado:
-                    aluno_selecionado = Aluno(aluno_id=aluno)
-                    db.session.add(aluno_selecionado)
+            # Cria as presenças na base de dados associadas à aula
+            Presenca.create(nova_aula.id, dados_sala['alunos'])
 
-                nova_presenca = Presenca(aula_id=nova_aula.id,
-                                         aluno_id=aluno_selecionado.id)
-                db.session.add(nova_presenca)
-
-            db.session.commit()
             # Remove a sala em andamento da lista de aulas em andamento e retorna o código a informar que foi processado
             del aulas_a_decorrer[sala_param]
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula.id), 204
@@ -149,19 +135,10 @@ def exportar_aula():
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     # Busca todas as presenças associadas à aula e verifica se existe alguma presença
-    presencas_aula = Presenca.query.filter_by(aula_id=request.args.get('aula_id')).all()
-    if not presencas_aula:
-        return jsonify(error="Não existem presençar marcadas para esta aula."), 404
-
-    # Itera sobre todas as presenças e guarda na lista corretamente.
-    data = []
-    for presenca in presencas_aula:
-        aluno_id = presenca.aluno_id
-        created_at = presenca.created_at.strftime('%d/%m/%Y às %H:%M')
-        data.append([aluno_id, created_at])
+    presencas = Aula.export(request.args.get('aula_id'))
 
     # Retorna a lista de todas as presenças
-    return jsonify(presencas=data), 200
+    return jsonify(presencas=presencas), 200
 
 
 @main.route("/presencas", methods=["GET"])
@@ -200,8 +177,7 @@ def arduino_presenca():
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     # Consulta o modelo de banco de dados "Sala" usando o valor da chave "identifier" obtida dos dados JSON
-    arduino_id_hash = generate_password_hash(arduino_id, method='sha256')
-    sala = Sala.query.filter_by(arduino_id=arduino_id_hash).first()
+    sala = Sala.get_sala_by_arduino(arduino_id)
 
     # Verifica se a sala obtida da consulta não existe ou se o ‘id’ da sala não está presente na lista
     # "aulas_a_decorrer"
@@ -215,11 +191,8 @@ def arduino_presenca():
     if sala_selecionada['estado'] == "STOP":
         return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
 
-    # Gera um hash do UID do dispositivo do aluno obtida dos dados JSON usando o algoritmo de hash SHA256
-    aluno_uid_hash = generate_password_hash(disp_uid, method='sha256')
-
-    # Consulta os modelos da base de dados "Aluno" e "Dispositivo" usando o valor hash do UID gerado anteriormente
-    aluno = Aluno.query.join(Dispositivo).filter(Dispositivo.uid == aluno_uid_hash).first()
+    # Consulta o modelo da base de dados "Aluno" e "Dispositivo" usando o valor hash do UID gerado anteriormente
+    aluno = Aluno.get_aluno_by_disp(disp_uid)
 
     # Verifica se o aluno obtido da consulta não existe
     if not aluno:

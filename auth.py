@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from werkzeug.security import check_password_hash
 from uuid import uuid4
 from models import User
 
@@ -17,20 +16,66 @@ def login():
         # Retorna JSON do erro
         return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
 
-    # Obtém o utilizador com base no nome de utilizador fornecido
-    user = User.query.filter_by(username=username).first()
+    # Realiza a ação de login do utilizador
+    login_result = User.login_user(username, password)
 
     # Verifica se o utilizador existe e se a senha fornecida está correta
-    if not user or not check_password_hash(user.password, password):
+    if not login_result:
         # Retorna JSON do erro
-        return jsonify(error='Credenciais inválidas. Verifique os seus dados e tente novamente.'), 401
-
-    # Verifica se o utilizador está ativo
-    if not user.is_active:
-        # Retorna JSON do erro
-        return jsonify(error='O seu utilizador está desativado. Contacte a Secretaria do DEISI.'), 403
+        return jsonify(error='Acesso negado. Verifique os seus dados e tente novamente. Caso tenha problemas, '
+                             'contacte a Secretaria do DEISI.'), 401
 
     # Cria o token de sessão do utilizador
     token = uuid4()
+
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    return jsonify(token=token, professor_id=user.professor_id, is_admin=user.is_admin), 200
+    return jsonify(token=token, professor_id=login_result[1]['professor_id'], is_admin=login_result[1]['is_admin']), 200
+
+
+@auth.route("/recuperar", methods=["POST"])
+def recuperar_senha():
+    # Recebe os dados enviados no corpo do request
+    params = request.get_json()
+    username = params['username']
+
+    # Verifica se os parâmetros foram recebidos
+    if not username:
+        # Retorna JSON do erro
+        return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
+
+    # Verificar se o utilizador existe e retorna o objeto
+    user = User.verify_user(username)
+
+    # Verifica se o utilizador existe na base de dados
+    if not user:
+        # Retorna JSON do erro
+        return jsonify(error='O utilizador não existe. Contacte a Secretaria do DEISI.'), 404
+
+    # Retorna JSON de sucesso após o ‘login’ bem-sucedido
+    return jsonify(username=username, token=user.get_reset_token()), 200
+
+
+@auth.route("/recuperar/alterar", methods=["POST"])
+def recuperar_senha_alterar():
+    # Recebe os dados enviados no corpo do request
+    params = request.get_json()
+    username, password, token = params['username'], params['password'], params['token']
+
+    # Verifica se os parâmetros foram recebidos
+    if not username or not password or not token:
+        # Retorna JSON do erro
+        return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
+
+    # Verificar se o utilizador existe e retorna o objeto
+    user = User.verify_user(username)
+
+    # Verifica se o utilizador existe na base de dados e o token está correto
+    if not user or not user.verify_reset_token(token):
+        # Retorna JSON do erro
+        return jsonify(error='O utilizador ou o token são inválidos. Tente novamente.'), 404
+
+    # Atualiza a password do utilizador na base de dados
+    user.set_password(password, commit=True)
+
+    # Retorna JSON de sucesso
+    return jsonify(message="Senha alterada com sucesso."), 200
