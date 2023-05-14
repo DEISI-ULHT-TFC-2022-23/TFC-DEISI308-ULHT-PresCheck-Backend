@@ -64,7 +64,7 @@ def recuperar_senha():
     from flask import render_template
     msg = Message(
         subject="ULHT PresCheck - Recuperar senha",
-        recipients=["alexandre.nunes.garcia10@gmail.com"],
+        recipients=["ulht-prescheck@outlook.pt"],
         html=render_template('reset_email.html', user=user.username, token=user.get_reset_token())
     )
     # Envia o email para o utilizador numa thread à parte
