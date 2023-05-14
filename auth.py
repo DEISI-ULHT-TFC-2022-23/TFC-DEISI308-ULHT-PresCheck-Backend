@@ -26,6 +26,7 @@ def login():
         return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
 
     # Realiza a ação de login do utilizador
+    # TODO: O LOGIN NÃO ESTÁ A PASSAR O FALSE CORRETAMENTE
     login_result = User.login_user(username, password)
 
     # Verifica se o utilizador existe e se a senha fornecida está correta
@@ -38,6 +39,7 @@ def login():
     token = uuid4()
 
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
+    # TODO: CORRIGIR O LOGIN - ESTÁ A DAR 500 QUANDO TEM LOGIN ERRADO E PROFESSOR_ID É NULL
     return jsonify(token=token, professor_id=login_result[1]['professor_id'], is_admin=login_result[1]['is_admin']), 200
 
 
@@ -62,9 +64,10 @@ def recuperar_senha():
 
     # Prepara o objeto de mensagem de email
     from flask import render_template
+    import app
     msg = Message(
         subject="ULHT PresCheck - Recuperar senha",
-        recipients=["alexandre.nunes.garcia10@gmail.com"],
+        recipients=[app.Configuration.MAIL_USERNAME],
         html=render_template('reset_email.html', user=user.username, token=user.get_reset_token())
     )
     # Envia o email para o utilizador numa thread à parte

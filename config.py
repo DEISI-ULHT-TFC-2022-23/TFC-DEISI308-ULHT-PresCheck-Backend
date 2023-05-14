@@ -5,8 +5,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Configuration:
     # Configurações da App
-    Debug = True
-    SECRET_KEY = 'secretkey'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
 
     # Configurações da base de dados
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
