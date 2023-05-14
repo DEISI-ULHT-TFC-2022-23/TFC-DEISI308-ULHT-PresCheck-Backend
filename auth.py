@@ -61,13 +61,14 @@ def recuperar_senha():
         return jsonify(error='O utilizador não existe. Contacte a Secretaria do DEISI.'), 404
 
     # Prepara o objeto de mensagem de email
-    msg = Message()
-    msg.subject = "ULHT PresCheck - Recuperar senha"
-    msg.recipients = ["alexandre.nunes.garcia10@gmail.com"]
     from flask import render_template
-    msg.html = render_template('reset_email.html', user=user.username, token=user.get_reset_token())
+    msg = Message(
+        subject="ULHT PresCheck - Recuperar senha",
+        recipients=["alexandre.nunes.garcia10@gmail.com"],
+        html=render_template('reset_email.html', user=user.username, token=user.get_reset_token())
+    )
     # Envia o email para o utilizador numa thread à parte
-    Thread(target=send_email, args=(msg, )).start()
+    Thread(target=send_email, args=(msg,)).start()
 
     # Retorna JSON de sucesso
     return jsonify(message="Email enviado com sucesso."), 200

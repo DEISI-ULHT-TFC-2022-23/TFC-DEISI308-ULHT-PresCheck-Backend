@@ -1,11 +1,14 @@
+import random
 from time import time
 
 import jwt
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash, check_password_hash
+from cryptography.fernet import Fernet
 
 db = SQLAlchemy()
+fernet = Fernet(Fernet.generate_key())
 
 professor_unidade = db.Table('professor_unidade',
                              db.Column('unidade_id', db.Integer, db.ForeignKey('unidade.id')),
@@ -114,21 +117,22 @@ class User(db.Model):
     def verify_password(self, password):
         return check_password_hash(self.password, password)
 
-    def get_reset_token(self, expires=500):
+    def get_reset_token(self):
         import app
         return jwt.encode(payload={'reset_password': self.username,
-                                   'exp': time() + expires},
+                                   'exp': time() + 5 * 60},
                           key=app.Configuration.SECRET_KEY)
 
     @staticmethod
     def verify_reset_token(token):
         try:
             import app
-            data = jwt.decode(token, key=app.Configuration.SECRET_KEY)
+            data = jwt.decode(token, key=app.Configuration.SECRET_KEY, algorithms=['HS256', ])
             username = data['reset_password']
             if time() > data['exp']:
                 raise Exception
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
         return User.query.filter_by(username=username).first()
 

@@ -26,4 +26,4 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(admin_blueprint)
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host='0.0.0.0')
