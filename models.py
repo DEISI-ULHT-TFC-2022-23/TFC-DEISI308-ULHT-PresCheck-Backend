@@ -327,7 +327,7 @@ class Presenca(db.Model):
             if not aluno_selecionado:
                 aluno_selecionado = aluno_selecionado[1]
 
-            nova_presenca = Presenca(aula_id=aula_id, aluno_id=aluno_selecionado.id)
+            nova_presenca = Presenca(aula_id=aula_id, aluno_id=aluno_selecionado[1].id)
             presencas.append(nova_presenca)
 
         db.session.add_all(presencas)

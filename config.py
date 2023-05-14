@@ -17,7 +17,6 @@ class Configuration:
     MAIL_SERVER = 'smtp.office365.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = 'ulht-prescheck@outlook.pt'
-    MAIL_PASSWORD = 'TFC_lusofona.2023'
-    MAIL_DEFAULT_SENDER = ("ULHT PresCheck", "ulht-prescheck@outlook.pt")
-
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = ("ULHT PresCheck", os.environ.get('MAIL_USERNAME'))
