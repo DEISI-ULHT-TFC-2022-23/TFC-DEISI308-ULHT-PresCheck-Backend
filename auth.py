@@ -26,11 +26,10 @@ def login():
         return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
 
     # Realiza a ação de login do utilizador
-    # TODO: O LOGIN NÃO ESTÁ A PASSAR O FALSE CORRETAMENTE
     login_result = User.login_user(username, password)
 
     # Verifica se o utilizador existe e se a senha fornecida está correta
-    if not login_result:
+    if not login_result[0]:
         # Retorna JSON do erro
         return jsonify(error='Acesso negado. Verifique os seus dados e tente novamente. Caso tenha problemas, '
                              'contacte a Secretaria do DEISI.'), 401
@@ -39,7 +38,6 @@ def login():
     token = uuid4()
 
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    # TODO: CORRIGIR O LOGIN - ESTÁ A DAR 500 QUANDO TEM LOGIN ERRADO E PROFESSOR_ID É NULL
     return jsonify(token=token, professor_id=login_result[1]['professor_id'], is_admin=login_result[1]['is_admin']), 200
 
 
