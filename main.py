@@ -54,14 +54,14 @@ def get_aulas():
         return jsonify(error="[CRITICAL] Parâmetro incorreto - só se aceitam números!"), 400
 
     # Cria uma lista com o nome da sala e o nome da unidade correspondente
-    aulas_ativas = []
+    aula_ativa = {}
     for sala, dados in aulas_a_decorrer.items():
         if dados['professor_id'] == professor_id:
             unidade = Unidade.query.get(dados['unidade_id'])
-            aulas_ativas.append({'sala': sala, 'unidade': unidade.nome, 'estado': dados['estado']})
+            aula_ativa = {'sala': sala, 'unidade': unidade.nome, 'estado': dados['estado']}
 
     # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
-    return jsonify(aulas=aulas_ativas), 200
+    return jsonify(aula_ativa), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
