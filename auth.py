@@ -62,10 +62,9 @@ def recuperar_senha():
 
     # Prepara o objeto de mensagem de email
     from flask import render_template
-    import app
     msg = Message(
         subject="ULHT PresCheck - Recuperar senha",
-        recipients=[app.Configuration.MAIL_USERNAME],
+        recipients=[f"{user}@ulusofona.pt"],
         html=render_template('reset_email.html', user=user.username, token=user.get_reset_token())
     )
     # Envia o email para o utilizador numa thread à parte

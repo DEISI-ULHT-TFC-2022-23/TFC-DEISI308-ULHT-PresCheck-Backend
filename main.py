@@ -14,8 +14,7 @@ Formato:
         unidade_id: (ID da unidade),
         professor_id: (ID do professor),
         timestamp_aula_iniciada: Datetime.timestamp,
-        alunos : [(Número aluno 1), (Número aluno 2), ...],
-        alunos_novos : True/False
+        alunos : [(Número aluno 1), (Número aluno 2), ...]
     }
 }
 """
@@ -79,8 +78,7 @@ def iniciar_aula():
         'unidade_id': unidade_id,
         'professor_id': professor_id,
         'timestamp_aula_iniciada': datetime.datetime.now().timestamp(),
-        'alunos': [],
-        'alunos_novos': False
+        'alunos': []
     }
 
     # Adiciona a aula em andamento à lista de aulas em andamento, usando o nome da sala como chave
@@ -112,6 +110,7 @@ def controlar_aula():
         case "FINISH":
             # Obtém os dados da sala em andamento
             dados_sala = aulas_a_decorrer[sala_param]
+
             # Cria uma aula na base de dados com as informações da sala em andamento
             nova_aula = Aula.create(sala_param,
                                     dados_sala['unidade_id'],
@@ -163,14 +162,9 @@ def get_presencas():
 
 @main.route("/presencas/arduino", methods=["PUT"])
 def arduino_presenca():
-    # Verifica se o tipo de conteúdo da solicitação é "application/json"
-    # e se o cabeçalho "User-Agent" contém a ‘string’ "ArduinoULHT"
-    if request.content_type != "application/json" or "ArduinoULHT" not in request.headers.get("User-Agent"):
-        jsonify(error="[CRITICAL] O cabeçalho da requisição é inválido!"), 400
-
     # Obtém os dados JSON da solicitação POST
     params = request.get_json()
-    arduino_id, disp_uid = params['identifier'].strip(), params['sent_uid'].strip()
+    arduino_id, disp_uid = params['identifier'].strip(), params['uid'].strip()
 
     # Verifica se os dados JSON obtidos são inválidos
     if not arduino_id or not disp_uid:
@@ -198,10 +192,12 @@ def arduino_presenca():
     if not aluno:
         return jsonify(error="Não existe nenhum aluno associado ao UID lido."), 404
 
+    if aluno.id in sala_selecionada['alunos']:
+        return jsonify(error="Aluno já está na lista de presenças"), 304
+
     # Adiciona o número do aluno à lista de presenças,
     # avisa que existem alunos novos na lista e retorna uma resposta JSON com o código 200 OK
     sala_selecionada['alunos'].append(aluno.id)
-    sala_selecionada['alunos_novos'] = True
     return jsonify(message="Marcação da presença efetuada com sucesso."), 201
 
 
@@ -228,12 +224,11 @@ def marcar_presenca():
 
     # Verifica se o aluno inserido já consta na lista de alunos da aula a decorrer
     if num_aluno in sala_selecionada['alunos']:
-        return jsonify(error="Este aluno já tem a sua presença registada."), 409
+        return jsonify(error="Este aluno já tem a sua presença registada."), 304
 
     # Adiciona o número do aluno à lista de presenças,
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
     sala_selecionada['alunos'].append(num_aluno)
-    sala_selecionada['alunos_novos'] = True
     return jsonify(message="Marcação da presença efetuada com sucesso."), 201
 
 
