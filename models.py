@@ -252,13 +252,11 @@ class Sala(db.Model):
 
     @staticmethod
     def create(nome, arduino_id):
-        sala_exists = Sala.query.filter_by(nome=nome)
-        if sala_exists:
-            return False, sala_exists
-
+        sala_exists = Sala.query.filter_by(nome=nome).first()
         uid_exists = Sala.query.filter_by(arduino_id=arduino_id).first()
-        if uid_exists:
-            return False, uid_exists
+
+        if sala_exists or uid_exists:
+            return False, sala_exists
 
         sala = Sala()
         sala.nome = nome

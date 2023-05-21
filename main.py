@@ -27,7 +27,12 @@ def get_unidades():
     if not request.args or not request.args.get('professor_id'):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    unidades = Professor.get_unidades(request.args.get('professor_id'))
+    try:
+        professor_id = int(request.args.get('professor_id'))
+    except Exception:
+        return jsonify(error="[CRITICAL] Parâmetro incorreto - só se aceitam números!"), 400
+
+    unidades = Professor.get_unidades(professor_id)
 
     # Verifica se o professor não existe na base de dados
     if not unidades:
@@ -43,15 +48,20 @@ def get_aulas():
     if not request.args or not request.args.get('professor_id'):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
+    try:
+        professor_id = int(request.args.get('professor_id'))
+    except Exception:
+        return jsonify(error="[CRITICAL] Parâmetro incorreto - só se aceitam números!"), 400
+
     # Cria uma lista com o nome da sala e o nome da unidade correspondente
-    aulas_ativas = {}
+    aulas_ativas = []
     for sala, dados in aulas_a_decorrer.items():
-        if dados['professor_id'] == request.args.get('professor_id'):
+        if dados['professor_id'] == professor_id:
             unidade = Unidade.query.get(dados['unidade_id'])
-            aulas_ativas = {'sala': sala, 'unidade': unidade.nome, 'estado': dados['estado']}
+            aulas_ativas.append({'sala': sala, 'unidade': unidade.nome, 'estado': dados['estado']})
 
     # Retorna a sala e o nome da unidade em formato JSON e um código de status 200
-    return jsonify(sala=aulas_ativas['sala'], unidade=aulas_ativas['unidade'], state=aulas_ativas['estado']), 200
+    return jsonify(aulas=aulas_ativas), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
