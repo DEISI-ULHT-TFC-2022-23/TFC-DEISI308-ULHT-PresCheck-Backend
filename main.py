@@ -74,6 +74,12 @@ def iniciar_aula():
     if not sala_a_abrir or not professor_id or not unidade_id:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
+    try:
+        professor_id = int(professor_id)
+        unidade_id = int(unidade_id)
+    except Exception:
+        return jsonify(error="[CRITICAL] Parâmetros incorretos de ID não é número!"), 400
+
     # Verifica se a sala pretendida não existe na base de dados
     if not Sala.query.filter_by(nome=sala_a_abrir).first():
         return jsonify(error="Não existem registos dessa sala."), 404
@@ -162,9 +168,6 @@ def get_presencas():
 
     # Obtém a sala selecionada a partir do dicionário de aulas em andamento
     sala_selecionada = aulas_a_decorrer[request.args.get('sala')]
-
-    # Avisa que não há novos alunos na lista de presença da sala
-    sala_selecionada['alunos_novos'] = False
 
     # Retorna a lista de alunos da sala como resposta com código de status 200 (OK)
     return jsonify(alunos=sala_selecionada['alunos']), 200
