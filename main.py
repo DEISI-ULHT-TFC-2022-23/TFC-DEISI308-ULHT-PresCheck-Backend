@@ -13,7 +13,6 @@ Formato:
         estado: STOP/GO,
         unidade_id: (ID da unidade),
         professor_id: (ID do professor),
-        timestamp_aula_iniciada: Datetime.timestamp,
         alunos : [(Número aluno 1), (Número aluno 2), ...]
     }
 }
@@ -93,7 +92,6 @@ def iniciar_aula():
         'estado': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
-        'timestamp_aula_iniciada': datetime.datetime.now().timestamp(),
         'alunos': []
     }
 
@@ -153,7 +151,7 @@ def exportar_aula():
     presencas = Aula.export(request.args.get('aula_id'))
 
     # Retorna a lista de todas as presenças
-    return jsonify(presencas=presencas), 200
+    return jsonify(presencas=presencas[0], data_aula=presencas[1]), 200
 
 
 @main.route("/presencas", methods=["GET"])

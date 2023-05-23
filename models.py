@@ -303,9 +303,11 @@ class Aula(db.Model):
 
     @staticmethod
     def export(aula_id):
+        aula = Aula.query.get(aula_id)
+
         presencas_aula = Presenca.query.filter_by(aula_id=aula_id).all()
         data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in presencas_aula]
-        return data
+        return data, aula.created_at.strftime('%d/%m/%Y às %H:%M')
 
 
 class Presenca(db.Model):
