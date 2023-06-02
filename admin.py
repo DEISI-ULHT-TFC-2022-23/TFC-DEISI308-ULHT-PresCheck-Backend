@@ -1,5 +1,3 @@
-from crypt import methods
-
 from flask import Blueprint, jsonify, request
 from models import *
 
@@ -26,10 +24,12 @@ def admin_utilizadores():
     # retora todos os utilizadores exceto o admin
     return jsonify(utilizadores=User.query.filter(User.id != 1).all()), 200
 
+
 @admin.route("/admin/utilizadores/<int:id>", methods=["GET"])
 def admin_utilizadores_id(id):
     # retorna um utilizador específico
     return jsonify(utilizador=User.query.filter(User.id == id).first()), 200
+
 
 @admin.route("/admin/utilizadores/apagar/<int:id>", methods=["DELETE"])
 def admin_utilizadores_delete(id):
@@ -37,6 +37,7 @@ def admin_utilizadores_delete(id):
     User.query.filter(User.id == id).delete()
     db.session.commit()
     return "", 200
+
 
 @admin.route("/admin/utilizadores/criar", methods=["PUT"])
 def admin_utilizadores_criar():
@@ -50,6 +51,7 @@ def admin_utilizadores_criar():
     user[1].associate_prof(professor_id, commit=True)
     return jsonify(username=user[1].username, password=password, is_admin=user[1].is_admin,
                    professor_id=professor_id, unidades=Professor.get_unidades(professor_id)), 200
+
 
 @admin.route("/admin/utilizadores/editar/<int:id>", methods=["POST"])
 def admin_utilizadores_editar(id):
@@ -72,94 +74,17 @@ def admin_utilizadores_editar(id):
 
 @admin.route("/admin/alunos", methods=["GET"])
 def admin_alunos():
-    # retora todos os alunos
-    return jsonify(alunos=Aluno.query.all()), 200
-@admin.route("/admin/alunos/criar", methods=["PUT"])
-def admin_alunos_criar():
-    # cria um aluno
-    aluno_id = request.json["id"]
-    Aluno.create(aluno_id)
-    return 200
-@admin.route("/admin/alunos/<int:id>", methods=["GET"])
-def admin_alunos_id(id):
-    # retorna um aluno específico
-    return jsonify(aluno=Aluno.query.filter_by(aluno_id = id).first()), 200
+    alunos = [{"numero": aluno.id, "dispositivos": len(aluno.dispositivos)} for aluno in Aluno.query.all()]
+    alunos = sorted(alunos, key=lambda k: k['numero'])
+    return jsonify(alunos=alunos), 200
 
-# @admin.route("/admin/aluno/editar/<int:id>", methods=["POST"])
-# def admin_alunos_editar(id):
-#     dispositivos = request.json["dispositivos"]
-#     dispostivos_bs = Dispositivo.query.filter_by(aluno_id = id).all()
-#
-#     db.session.commit()
-#     return jsonify(aluno_id=aluno.aluno_id), 200
 
-@admin.route("/admin/salas", methods=["GET"])
-def admin_salas():
-    return jsonify(salas=Sala.query.all()), 200
+@admin.route("/admin/alunos/<int:aluno_id>", methods=["GET"])
+def admin_alunos_id(aluno_id):
+    aluno = Aluno.query.get(aluno_id)
+    if not aluno:
+        return jsonify(error="Aluno não encontrado"), 404
 
-@admin.route("/admin/salas/criar", methods=["PUT"])
-def admin_salas_criar():
-    # cria uma sala
-    sala_nome = request.json["nome"]
-    sala_arduino = request.json["arduino"]
-    Sala.create(sala_nome, sala_arduino)
-    return 200
-@admin.route("/admin/salas/editar/<int:id>", methods=["POST"])
-def admin_salas_editar(id):
-    sala_nome = request.json["nome"]
-    sala = Sala.get(id)
-    sala.nome = sala_nome
-    db.session.commit()
-    return 200
-@admin.route("/admin/salas/eliminar/<int:id>", methods=["DELETE"])
-def admin_salas_eliminar():
-    # apaga uma sala específico
-    Sala.query.filter(Sala.id == id).delete()
-    db.session.commit()
-    return "", 200
-@admin.route("/admin/aulas", methods=["GET"])
-def admin_aulas():
-    # retora todos as aulas
-    return jsonify(aulas=Aula.query.all()), 200
-@admin.route("/admin/aulas/<int:id>", methods=["GET"])
-def admin_aulas_id(id):
-    # retorna um aluno específico
-    return jsonify(aula=Aula.query.filter_by(id = id).first()), 200
-
-@admin.route("/admin/aula/eliminar/<int:id>", methods=["DELETE"])
-def admin_aula_eliminar():
-    # apaga uma aula específico
-    Aula.query.filter(Aula.id == id).delete()
-    db.session.commit()
-    return "", 200
-
-@admin.route("/admin/unidades", methods=["GET"])
-def admin_unidades():
-    # retorna todas as unidades
-    return jsonify(unidades=Unidade.query.all()), 200
-
-@admin.route("/admin/unidades/<int:id>", methods=["GET"])
-def admin_unidades_id(id):
-    # retorna uma unidade específico
-    return jsonify(unidade=Unidade.get(id)), 200
-@admin.route("/admin/unidades/criar", methods=["PUT"])
-def admin_unidades_criar():
-    # cria uma uniddade
-    unidades_id = request.json["id"]
-    unidades_nome = request.json["nome"]
-    Unidade.create(unidades_id, unidades_nome)
-    return 200
-@admin.route("/admin/unidades/editar/<int:id>", methods=["POST"])
-def admin_unidades_editar(id):
-    # edita uma unidade em específico
-    unidades_nome = request.json["nome"]
-    unidade = Unidade.get(id)
-    unidade.nome = unidades_nome
-    db.session.commit()
-    return 200
-@admin.route("/admin/unidades/eliminar/<int:id>", methods=["DELETE"])
-def admin_unidades_eliminar():
-    # apaga uma unidade específico
-    Unidade.query.filter(Unidade.id == id).delete()
-    db.session.commit()
-    return "", 200
+    dispositivos = [{"uid": dispositivo.uid, "associado_em": dispositivo.created_at} for dispositivo in aluno.dispositivos]
+    ultimas_presencas = aluno.get_last_classes()
+    return jsonify(aluno=aluno.id, dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200

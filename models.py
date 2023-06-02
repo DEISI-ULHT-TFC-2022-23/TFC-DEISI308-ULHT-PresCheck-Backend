@@ -3,6 +3,8 @@ from time import time
 
 import jwt
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
@@ -103,10 +105,16 @@ class User(db.Model):
         return '%s' % self.username
 
     def associate_prof(self, professor_id, commit=False):
+        try:
+            professor = Professor.query.filter_by(id=professor_id).one()
+        except NoResultFound:
+            return False
         self.professor_id = professor_id
 
         if commit:
             db.session.commit()
+
+        return True
 
     def set_password(self, password, commit=False):
         self.password = generate_password_hash(password, method='sha256')
@@ -119,7 +127,7 @@ class User(db.Model):
 
     def get_reset_token(self):
         import app
-        return jwt.encode(payload={'reset_password': self.username,
+        return jwt.encode(payload={'user': self.username,
                                    'exp': time() + 5 * 60},
                           key=app.Configuration.SECRET_KEY)
 
@@ -128,11 +136,10 @@ class User(db.Model):
         try:
             import app
             data = jwt.decode(token, key=app.Configuration.SECRET_KEY, algorithms=['HS256', ])
-            username = data['reset_password']
+            username = data['user']
             if time() > data['exp']:
                 raise Exception
         except Exception as e:
-            print(e)
             return None
         return User.query.filter_by(username=username).first()
 
@@ -184,6 +191,25 @@ class Aluno(db.Model):
 
     def __str__(self):
         return self.id
+
+    def get_last_classes(self, n=5):
+        last_classes = []
+
+        presencas = db.session.query(Presenca).\
+            options(joinedload(Presenca.aula).joinedload(Aula.unidade)).\
+            filter_by(aluno_id=self.id).\
+            order_by(Presenca.created_at.desc()).\
+            limit(n).all()
+
+        for presenca in presencas:
+            class_info = {
+                "unidade": presenca.aula.unidade.nome,
+                "presenca": presenca.created_at
+            }
+
+            last_classes.append(class_info)
+
+        return last_classes
 
     @staticmethod
     def create(aluno_id):
