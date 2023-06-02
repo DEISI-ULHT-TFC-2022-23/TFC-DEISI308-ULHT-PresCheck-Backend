@@ -7,6 +7,24 @@ demo_username = "demo"
 demo_password = "demo"
 
 
+# @admin.before_request
+# def before_request():
+#     authorization_header = request.headers.get("Authorization")
+#     if not authorization_header or not authorization_header.startswith("Bearer "):
+#         return jsonify(error="Não autorizado"), 401
+#
+#     token = authorization_header.split(" ")[1]
+#     if not token:
+#         return jsonify(error="Não autorizado"), 401
+#
+#     user = User.verify_session_token(token)
+#     if not user:
+#         return jsonify(error="Não autorizado"), 401
+#
+#     if user['active'] is False or user["admin"] is False:
+#         return jsonify(error="Não autorizado"), 401
+
+
 @admin.route("/admin/demo/criar", methods=["GET"])
 def admin_demo_criar():
     user = User.create(demo_username, demo_password, True, True)
@@ -85,6 +103,28 @@ def admin_alunos_id(aluno_id):
     if not aluno:
         return jsonify(error="Aluno não encontrado"), 404
 
-    dispositivos = [{"uid": dispositivo.uid, "associado_em": dispositivo.created_at} for dispositivo in aluno.dispositivos]
+    dispositivos = [{"uid": dispositivo.uid, "associado_em": dispositivo.created_at} for dispositivo in
+                    aluno.dispositivos]
     ultimas_presencas = aluno.get_last_classes()
     return jsonify(aluno=aluno.id, dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
+
+
+@admin.route("/admin/alunos/criar", methods=["PUT"])
+def admin_alunos_criar():
+    params = request.get_json()
+    numero, dispositivo = params["numero"], params["dispositivo"]
+    if not numero:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        numero = int(numero)
+        aluno = Aluno.create(numero)
+
+        if dispositivo:
+            Dispositivo.create(generate_password_hash(dispositivo), aluno.id)
+        return jsonify(aluno=aluno.id), 200
+    except ValueError:
+        return jsonify(error="Número inválido"), 400
+    except Exception as e:
+        print(e)
+        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500

@@ -1,4 +1,3 @@
-import random
 from time import time
 
 import jwt
@@ -139,9 +138,29 @@ class User(db.Model):
             username = data['user']
             if time() > data['exp']:
                 raise Exception
-        except Exception as e:
+        except Exception:
             return None
         return User.query.filter_by(username=username).first()
+
+    def generate_session_token(self):
+        import app
+        return jwt.encode(payload={'user': self.username,
+                                   'active': self.is_active,
+                                   'admin': self.is_admin},
+                          key=app.Configuration.SECRET_KEY,
+                          algorithm='HS256')
+
+    @staticmethod
+    def verify_session_token(token):
+        try:
+            import app
+            data = jwt.decode(token, key=app.Configuration.SECRET_KEY, algorithms=['HS256', ])
+            user_exists = User.query.filter_by(username=data['user']).first()
+            if not user_exists:
+                raise Exception
+        except Exception:
+            return None
+        return data
 
     @staticmethod
     def create(username, password, is_admin, is_active, professor_id=None):
@@ -195,10 +214,10 @@ class Aluno(db.Model):
     def get_last_classes(self, n=5):
         last_classes = []
 
-        presencas = db.session.query(Presenca).\
-            options(joinedload(Presenca.aula).joinedload(Aula.unidade)).\
-            filter_by(aluno_id=self.id).\
-            order_by(Presenca.created_at.desc()).\
+        presencas = db.session.query(Presenca). \
+            options(joinedload(Presenca.aula).joinedload(Aula.unidade)). \
+            filter_by(aluno_id=self.id). \
+            order_by(Presenca.created_at.desc()). \
             limit(n).all()
 
         for presenca in presencas:
