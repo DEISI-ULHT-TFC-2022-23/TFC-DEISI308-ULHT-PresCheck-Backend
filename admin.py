@@ -128,3 +128,14 @@ def admin_alunos_criar():
     except Exception as e:
         print(e)
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+
+
+@admin.route("/admin/alunos/eliminar/<int:aluno_id>", methods=["DELETE"])
+def admin_alunos_eliminar(aluno_id):
+    aluno = Aluno.query.get(aluno_id)
+    if not aluno:
+        return jsonify(error="Aluno não encontrado"), 404
+
+    aluno.delete()
+    db.session.commit()
+    return jsonify(), 200

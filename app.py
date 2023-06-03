@@ -12,7 +12,7 @@ mail = Mail()
 
 app = Flask(__name__)
 app.config.from_object(Configuration)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 db.init_app(app)
 mail.init_app(app)
 
@@ -26,4 +26,4 @@ app.register_blueprint(auth_blueprint)
 app.register_blueprint(admin_blueprint)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=5000)
