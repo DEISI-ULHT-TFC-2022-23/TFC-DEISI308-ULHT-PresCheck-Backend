@@ -120,11 +120,12 @@ def admin_alunos_criar():
         numero = int(numero)
         aluno = Aluno.create(numero)
 
-        if dispositivo:
-            Dispositivo.create(generate_password_hash(dispositivo), aluno.id)
-        return jsonify(aluno=aluno.id), 200
+        if dispositivo is not None:
+            Dispositivo.create(dispositivo, aluno[1].id)
+
+        return jsonify(), 200
     except ValueError:
-        return jsonify(error="Número inválido"), 400
+        return jsonify(error="Número de aluno inválido"), 400
     except Exception as e:
         print(e)
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
@@ -132,10 +133,16 @@ def admin_alunos_criar():
 
 @admin.route("/admin/alunos/eliminar/<int:aluno_id>", methods=["DELETE"])
 def admin_alunos_eliminar(aluno_id):
-    aluno = Aluno.query.get(aluno_id)
-    if not aluno:
-        return jsonify(error="Aluno não encontrado"), 404
 
-    aluno.delete()
-    db.session.commit()
-    return jsonify(), 200
+    try:
+        numero = int(aluno_id)
+        deletion = Aluno.delete(numero)
+
+        if deletion is False:
+            return jsonify(error="Aluno não encontrado"), 404
+
+        return jsonify(), 200
+    except ValueError:
+        return jsonify(error="Número de aluno inválido"), 400
+    except Exception:
+        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500

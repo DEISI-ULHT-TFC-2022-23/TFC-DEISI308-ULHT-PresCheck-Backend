@@ -229,6 +229,15 @@ class Aluno(db.Model):
         return True, aluno
 
     @staticmethod
+    def delete(aluno_id):
+        aluno = Aluno.query.get(aluno_id)
+        if aluno:
+            db.session.delete(aluno)
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
     def get_aluno_by_disp(disp_uid):
         aluno_uid_hash = generate_password_hash(disp_uid, method='sha256')
         return Aluno.query.join(Dispositivo).filter(Dispositivo.uid == aluno_uid_hash).first()
@@ -253,6 +262,7 @@ class Dispositivo(db.Model):
         if not aluno_exists:
             return False, aluno_exists
 
+        uid = generate_password_hash(uid, method='sha256')
         uid_exists = Dispositivo.query.filter_by(uid=uid).first()
         if uid_exists:
             return False, uid_exists
