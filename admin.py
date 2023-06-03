@@ -120,6 +120,9 @@ def admin_alunos_criar():
         numero = int(numero)
         aluno = Aluno.create(numero)
 
+        if aluno[0] is False:
+            return jsonify(error="Aluno já existente"), 409
+
         if dispositivo is not None:
             Dispositivo.create(dispositivo, aluno[1].id)
 
