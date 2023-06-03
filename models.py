@@ -212,23 +212,8 @@ class Aluno(db.Model):
         return self.id
 
     def get_last_classes(self, n=5):
-        last_classes = []
-
-        presencas = db.session.query(Presenca). \
-            options(joinedload(Presenca.aula).joinedload(Aula.unidade)). \
-            filter_by(aluno_id=self.id). \
-            order_by(Presenca.created_at.desc()). \
-            limit(n).all()
-
-        for presenca in presencas:
-            class_info = {
-                "unidade": presenca.aula.unidade.nome,
-                "presenca": presenca.created_at
-            }
-
-            last_classes.append(class_info)
-
-        return last_classes
+        presencas = Presenca.query.filter_by(aluno_id=self.id).join(Aula).join(Unidade).order_by(Presenca.created_at.desc()).limit(n).all()
+        return [{"unidade": presenca.aula.unidade.nome, "presenca": presenca.created_at} for presenca in presencas]
 
     @staticmethod
     def create(aluno_id):
