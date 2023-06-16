@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+import requests
 from models import *
 
 admin = Blueprint('admin', __name__)
@@ -109,6 +110,24 @@ def admin_alunos_id(aluno_id):
     return jsonify(aluno=aluno.id, dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
 
 
+@admin.route("/admin/alunos/associar", methods=["POST"])
+def admin_alunos_associar():
+    arduino_response = requests.get("http://localhost:5001/arduino")
+    if arduino_response.status_code != 200:
+        return jsonify(error=arduino_response.content), arduino_response.status_code
+
+    params = arduino_response.json()
+    arduino_id, disp_uid = params["identifier"], params["uid"]
+    if not arduino_id or not disp_uid:
+        return jsonify(error="Arduino não encontrado"), 404
+
+    arduino = Sala.get_sala_by_arduino(arduino_id)
+    if not arduino:
+        return jsonify(error="O arduino não está associado a nenhuma sala."), 404
+
+    return jsonify(uid=disp_uid), 200
+
+
 @admin.route("/admin/alunos/criar", methods=["PUT"])
 def admin_alunos_criar():
     params = request.get_json()
@@ -136,7 +155,6 @@ def admin_alunos_criar():
 
 @admin.route("/admin/alunos/eliminar/<int:aluno_id>", methods=["DELETE"])
 def admin_alunos_eliminar(aluno_id):
-
     try:
         numero = int(aluno_id)
         deletion = Aluno.delete(numero)
