@@ -275,6 +275,21 @@ class Dispositivo(db.Model):
         db.session.commit()
         return True, disp
 
+    @staticmethod
+    def delete(aluno_id, uid):
+        aluno = Aluno.query.get(aluno_id)
+        if not aluno:
+            return False
+
+        uid = generate_password_hash(uid, method='sha256')
+        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id).filter_by(uid=uid).first()
+        if not dispositivo:
+            return False
+
+        db.session.delete(dispositivo)
+        db.session.commit()
+        return True
+
 
 class Sala(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

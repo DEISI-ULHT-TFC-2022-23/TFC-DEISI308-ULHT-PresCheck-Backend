@@ -167,3 +167,37 @@ def admin_alunos_eliminar(aluno_id):
         return jsonify(error="Número de aluno inválido"), 400
     except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+
+
+@admin.route("/admin/dispositivo/criar", methods=["PUT"])
+def admin_dispositivo_criar():
+    params = request.get_json()
+    dispositivo, aluno_id = params["dispositivo"], params["aluno_id"]
+    if not dispositivo or not aluno_id:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        aluno = Aluno.query.get(aluno_id)
+        if not aluno:
+            return jsonify(error="Aluno não encontrado"), 404
+
+        Dispositivo.create(dispositivo, aluno_id)
+        return jsonify(), 200
+    except Exception as e:
+        print(e)
+        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+
+
+@admin.route("/admin/dispositivo/eliminar/<int:aluno_id>/<string:uid>", methods=["DELETE"])
+def admin_dispositivo_eliminar(aluno_id, uid):
+    try:
+        numero = int(aluno_id)
+        deletion = Dispositivo.delete(numero, uid)
+
+        if deletion is False:
+            return jsonify(error="Não foi possível eliminar o dispositivo."), 404
+
+        return jsonify(), 200
+    except Exception as e:
+        print(e)
+        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
