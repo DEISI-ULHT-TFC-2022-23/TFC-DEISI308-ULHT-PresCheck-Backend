@@ -12,7 +12,7 @@ mail = Mail()
 
 app = Flask(__name__)
 app.config.from_object(Configuration)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app)
 db.init_app(app)
 mail.init_app(app)
 
