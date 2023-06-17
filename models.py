@@ -1,9 +1,11 @@
+import re
 from time import time
+import random
+import string
 
 import jwt
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
@@ -130,6 +132,12 @@ class User(db.Model):
                                    'exp': time() + 5 * 60},
                           key=app.Configuration.SECRET_KEY)
 
+    def get_associated_unidades(self):
+        if not self.professor_id:
+            return []
+
+        return Professor.get_unidades(self.professor_id)
+
     @staticmethod
     def verify_reset_token(token):
         try:
@@ -163,9 +171,8 @@ class User(db.Model):
         return data
 
     @staticmethod
-    def create(username, password, is_admin, is_active, professor_id=None):
-
-        user_exists = User.query.filter_by(username=username).first()
+    def create(username, is_admin, is_active, is_professor, unidades):
+        user_exists = User.verify_user(username)
         if user_exists:
             return False, user_exists
 
@@ -173,10 +180,13 @@ class User(db.Model):
         user.username = username
         user.is_admin = is_admin
         user.is_active = is_active
-        user.set_password(password)
+        user.set_password(''.join(random.choice(string.printable) for _ in range(8)))
 
-        if professor_id:
+        if is_professor:
+            professor_id = re.findall(r'\d+', username)
+            Professor.create(professor_id)
             user.associate_prof(professor_id)
+            user.professor.associate_unidades(unidades)
 
         db.session.add(user)
         db.session.commit()

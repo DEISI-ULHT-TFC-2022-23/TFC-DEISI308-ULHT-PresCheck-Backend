@@ -1,5 +1,7 @@
 from flask import Blueprint, jsonify, request
 import requests
+
+import auth
 from models import *
 
 admin = Blueprint('admin', __name__)
@@ -41,54 +43,57 @@ def admin_demo_criar():
 @admin.route("/admin/utilizadores", methods=["GET"])
 def admin_utilizadores():
     # retora todos os utilizadores exceto o admin
-    return jsonify(utilizadores=User.query.filter(User.id != 1).all()), 200
+    utilizadores = [{"username": user.username,
+                     "is_professor": True if user.professor_id else False,
+                     "is_admin": user.is_admin,
+                     "is_active": user.is_active}
+                    for user in User.query.filter(User.id != 1).all()]
+    return jsonify(utilizadores=utilizadores), 200
 
 
-@admin.route("/admin/utilizadores/<int:id>", methods=["GET"])
-def admin_utilizadores_id(id):
+@admin.route("/admin/utilizadores/<int:id_user>", methods=["GET"])
+def admin_utilizadores_id(id_user):
     # retorna um utilizador específico
-    return jsonify(utilizador=User.query.filter(User.id == id).first()), 200
+    user = User.query.get(id_user)
+    if not user:
+        return jsonify(error="Utilizador não encontrado"), 404
 
-
-@admin.route("/admin/utilizadores/apagar/<int:id>", methods=["DELETE"])
-def admin_utilizadores_delete(id):
-    # deleta um utilizador específico
-    User.query.filter(User.id == id).delete()
-    db.session.commit()
-    return "", 200
+    return jsonify(username=user.username,
+                   is_active=user.is_active,
+                   is_professor=True if user.professor_id else False,
+                   unidades=user.get_associated_unidades()), 200
 
 
 @admin.route("/admin/utilizadores/criar", methods=["PUT"])
 def admin_utilizadores_criar():
-    # cria um utilizador
-    username = request.json["username"]
-    password = request.json["password"]
-    is_admin = request.json["is_admin"]
-    professor_id = request.json["professor_id"]
-    unidades = request.json["unidades"]
-    user = User.create(username, password, is_admin, True)
-    user[1].associate_prof(professor_id, commit=True)
-    return jsonify(username=user[1].username, password=password, is_admin=user[1].is_admin,
-                   professor_id=professor_id, unidades=Professor.get_unidades(professor_id)), 200
+    params = request.get_json()
+    username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params[
+        "unidades"]
+    if not username or is_admin is None or is_professor is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
+    try:
+        unidades = [int(unidade) for unidade in unidades if unidades != ""]
+        user = User.create(username, is_admin, True, is_professor, unidades)
 
-@admin.route("/admin/utilizadores/editar/<int:id>", methods=["POST"])
-def admin_utilizadores_editar(id):
-    # edita um utilizador específico
-    username = request.json["username"]
-    password = request.json["password"]
-    is_admin = request.json["is_admin"]
-    professor_id = request.json["professor_id"]
-    unidades = request.json["unidades"]
-    user = User.query.filter(User.id == id).first()
-    user.username = username
-    user.password = password
-    user.is_admin = is_admin
-    user.professor_id = professor_id
-    user.unidades = unidades
-    db.session.commit()
-    return jsonify(username=user.username, password=user.password, is_admin=user.is_admin,
-                   professor_id=user.professor_id, unidades=Professor.get_unidades(user.professor_id)), 200
+        if user[0] is False:
+            return jsonify(error="O utilizador já existe."), 409
+
+        from flask import render_template
+        from threading import Thread
+        from flask_mail import Message
+        msg = Message(
+            subject="ULHT PresCheck - Criação de acesso",
+            recipients=[f"{username}@ulusofona.pt"],
+            html=render_template('send_password.html', user=username, password=user[1].password)
+        )
+        # Envia o email para o utilizador numa thread à parte
+        Thread(target=auth.send_email, args=(msg,)).start()
+
+        return jsonify(message="Utilizador criado com sucesso"), 200
+    except Exception as e:
+        print(e)
+        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
 @admin.route("/admin/alunos", methods=["GET"])
@@ -145,7 +150,7 @@ def admin_alunos_criar():
         if dispositivo is not None:
             Dispositivo.create(dispositivo, aluno[1].id)
 
-        return jsonify(), 200
+        return jsonify(message="Aluno criado com sucesso"), 200
     except ValueError:
         return jsonify(error="Número de aluno inválido"), 400
     except Exception as e:
