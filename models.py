@@ -281,7 +281,6 @@ class Dispositivo(db.Model):
         if not aluno:
             return False
 
-        uid = generate_password_hash(uid, method='sha256')
         dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id).filter_by(uid=uid).first()
         if not dispositivo:
             return False

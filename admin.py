@@ -177,11 +177,11 @@ def admin_dispositivo_criar():
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        aluno = Aluno.query.get(aluno_id)
-        if not aluno:
-            return jsonify(error="Aluno não encontrado"), 404
+        number = int(aluno_id)
+        creation = Dispositivo.create(dispositivo, number)
+        if creation[0] is False:
+            return jsonify(error="Dispositivo já existente"), 409
 
-        Dispositivo.create(dispositivo, aluno_id)
         return jsonify(), 200
     except Exception as e:
         print(e)
