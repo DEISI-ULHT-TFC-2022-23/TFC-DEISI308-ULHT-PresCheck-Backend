@@ -20,7 +20,7 @@ professor_unidade = db.Table('professor_unidade',
 class Unidade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
-    aulas = db.relationship('Aula', backref='unidade')
+    aulas = db.relationship('Aula', backref='unidade', cascade="all, delete, save-update")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -47,9 +47,9 @@ class Unidade(db.Model):
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user = db.relationship('User', backref='professor')
+    user = db.relationship('User', backref='professor', cascade="save-update, none")
     unidades = db.relationship('Unidade', secondary='professor_unidade', backref='professores')
-    aulas = db.relationship('Aula', backref='professor')
+    aulas = db.relationship('Aula', backref='professor', cascade="save-update")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -200,8 +200,8 @@ class User(db.Model):
 
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    presencas = db.relationship('Presenca', backref='aluno')
-    dispositivos = db.relationship('Dispositivo', backref='aluno')
+    presencas = db.relationship('Presenca', backref='aluno', cascade="all,delete")
+    dispositivos = db.relationship('Dispositivo', backref='aluno', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -294,7 +294,7 @@ class Sala(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(7), nullable=False, unique=True)
     arduino_id = db.Column(db.String(100), nullable=False, unique=True)
-    aulas = db.relationship('Aula', backref='sala')
+    aulas = db.relationship('Aula', backref='sala', cascade="save-update, none")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -331,7 +331,7 @@ class Aula(db.Model):
     unidade_id = db.Column(db.Integer, db.ForeignKey('unidade.id'), nullable=False)
     professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
     sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
-    presencas = db.relationship('Presenca', backref='aula')
+    presencas = db.relationship('Presenca', backref='aula', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
