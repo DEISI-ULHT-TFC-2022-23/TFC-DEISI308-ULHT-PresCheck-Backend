@@ -30,7 +30,7 @@ demo_password = "demo"
 
 @admin.route("/admin/demo/criar", methods=["GET"])
 def admin_demo_criar():
-    user = User.create(demo_username, demo_password, True, True)
+    user = User.create(demo_username, demo_password, True, True, [])
     unidades = [Unidade.create(15151, "Matemática")[1], Unidade.create(1048294, "Segurança Informática")[1]]
     professor = Professor.create(1, unidades)
     user[1].associate_prof(1, commit=True)
@@ -43,7 +43,8 @@ def admin_demo_criar():
 @admin.route("/admin/utilizadores", methods=["GET"])
 def admin_utilizadores():
     # retora todos os utilizadores exceto o admin
-    utilizadores = [{"username": user.username,
+    utilizadores = [{"id": user.id,
+                    "username": user.username,
                      "is_professor": True if user.professor_id else False,
                      "is_admin": user.is_admin,
                      "is_active": user.is_active}
@@ -69,13 +70,11 @@ def admin_utilizadores_criar():
     params = request.get_json()
     username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params[
         "unidades"]
-    if not username or is_admin is None or is_professor is None:
+    if not username or is_admin is None or is_professor is None or unidades is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        unidades = [int(unidade) for unidade in unidades if unidades != ""]
         user = User.create(username, is_admin, True, is_professor, unidades)
-
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
@@ -84,8 +83,8 @@ def admin_utilizadores_criar():
         from flask_mail import Message
         msg = Message(
             subject="ULHT PresCheck - Criação de acesso",
-            recipients=[f"{username}@ulusofona.pt"],
-            html=render_template('send_password.html', user=username, password=user[1].password)
+            recipients=[f"ulht-prescheck@outlook.pt"],
+            html=render_template('send_password.html', user=username, password=user[2])
         )
         # Envia o email para o utilizador numa thread à parte
         Thread(target=auth.send_email, args=(msg,)).start()

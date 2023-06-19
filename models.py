@@ -22,7 +22,7 @@ professor_unidade = db.Table('professor_unidade',
 class Unidade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
-    aulas = db.relationship('Aula', backref='unidade', cascade="all, delete, save-update")
+    aulas = db.relationship('Aula', backref='unidade')
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -49,9 +49,9 @@ class Unidade(db.Model):
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user = db.relationship('User', backref='professor', cascade="save-update, none")
+    user = db.relationship('User', backref='professor')
     unidades = db.relationship('Unidade', secondary='professor_unidade', backref='professores')
-    aulas = db.relationship('Aula', backref='professor', cascade="save-update")
+    aulas = db.relationship('Aula', backref='professor')
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -61,10 +61,14 @@ class Professor(db.Model):
     def __str__(self):
         return '%s' % self.id
 
-    def associate_unidades(self, unidades):
-        for unidade in unidades:
-            self.unidades.append(unidade)
-        db.session.commit()
+    def associate_unidades(self, unidades, commit=False):
+        for unidade_id in unidades:
+            unidade = Unidade.query.get(unidade_id)
+            if unidade:
+                self.unidades.append(unidade_id)
+
+        if commit:
+            db.session.commit()
 
     @staticmethod
     def get_unidades(professor_id):
@@ -72,7 +76,7 @@ class Professor(db.Model):
         return [{'id': unidade.id, 'nome': unidade.nome} for unidade in prof.unidades]
 
     @staticmethod
-    def create(professor_id, unidades=None):
+    def create(professor_id, unidades):
         prof_exists = Professor.query.get(professor_id)
 
         if prof_exists:
@@ -107,9 +111,10 @@ class User(db.Model):
 
     def associate_prof(self, professor_id, commit=False):
         try:
-            professor = Professor.query.filter_by(id=professor_id).one()
+            Professor.query.filter_by(id=professor_id).one()
         except NoResultFound:
             return False
+
         self.professor_id = professor_id
 
         if commit:
@@ -176,21 +181,22 @@ class User(db.Model):
         if user_exists:
             return False, user_exists
 
+        random_password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
+
         user = User()
         user.username = username
         user.is_admin = is_admin
         user.is_active = is_active
-        user.set_password(''.join(random.choice(string.printable) for _ in range(8)))
+        user.set_password(random_password)
 
         if is_professor:
-            professor_id = re.findall(r'\d+', username)
-            Professor.create(professor_id)
+            professor_id = re.findall(r'\d+', username)[0]
+            Professor.create(professor_id, unidades)
             user.associate_prof(professor_id)
-            user.professor.associate_unidades(unidades)
 
         db.session.add(user)
         db.session.commit()
-        return True, user
+        return True, user, random_password
 
     @staticmethod
     def login_user(username, password):
