@@ -63,9 +63,10 @@ class Professor(db.Model):
 
     def associate_unidades(self, unidades, commit=False):
         for unidade_id in unidades:
+            print(type(unidade_id))
             unidade = Unidade.query.get(unidade_id)
             if unidade:
-                self.unidades.append(unidade_id)
+                self.unidades.append(unidade)
 
         if commit:
             db.session.commit()
@@ -84,9 +85,9 @@ class Professor(db.Model):
 
         prof = Professor()
         prof.id = professor_id
-
-        if unidades:
-            prof.associate_unidades(unidades)
+        print("unidades: ", unidades)
+        prof.associate_unidades(unidades)
+        print("Unidades associadas")
 
         db.session.add(prof)
         db.session.commit()
@@ -191,7 +192,9 @@ class User(db.Model):
 
         if is_professor:
             professor_id = re.findall(r'\d+', username)[0]
+            print("professor_id: ", professor_id)
             Professor.create(professor_id, unidades)
+            print("professor criado")
             user.associate_prof(professor_id)
 
         db.session.add(user)
