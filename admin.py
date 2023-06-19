@@ -74,9 +74,7 @@ def admin_utilizadores_criar():
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        print("A criar utilizador...")
         user = User.create(username, is_admin, True, is_professor, unidades)
-        print("Utilizador criado com sucesso!")
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
