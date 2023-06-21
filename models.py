@@ -174,7 +174,9 @@ class User(db.Model):
         return data
 
     @staticmethod
-    def create(username, is_admin, is_active, is_professor, unidades):
+    def create(username, is_admin=False, is_professor=False, unidades=None, password=None):
+        if unidades is None:
+            unidades = []
         user_exists = User.verify_user(username)
         if user_exists:
             return False, user_exists
@@ -184,8 +186,8 @@ class User(db.Model):
         user = User()
         user.username = username
         user.is_admin = is_admin
-        user.is_active = is_active
-        user.set_password(random_password)
+        user.is_active = True
+        user.set_password(password or random_password)
 
         if is_professor:
             professor_id = re.findall(r'\d+', username)[0]

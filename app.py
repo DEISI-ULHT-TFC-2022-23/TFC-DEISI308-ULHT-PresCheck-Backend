@@ -6,7 +6,7 @@ from config import Configuration
 from admin import admin as admin_blueprint
 from auth import auth as auth_blueprint
 from main import main as main_blueprint
-from models import db
+from models import db, User
 
 mail = Mail()
 
@@ -19,6 +19,7 @@ mail.init_app(app)
 with app.app_context():
     # Criação das tabelas da base de dados
     db.create_all()
+    User.create(username="admin", password="admin", is_admin=True)
 
 # Registro dos blueprints (módulos) na app
 app.register_blueprint(main_blueprint)
