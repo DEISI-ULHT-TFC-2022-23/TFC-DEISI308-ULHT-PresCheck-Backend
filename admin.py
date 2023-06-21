@@ -30,7 +30,8 @@ demo_password = "demo"
 
 @admin.route("/admin/demo/criar", methods=["GET"])
 def admin_demo_criar():
-    user = User.create(demo_username, demo_password, True, True, [])
+    user = User.create(demo_username, True, True, False, [])
+    user[1].set_password(demo_password, True)
     unidades = [Unidade.create(15151, "Matemática")[1], Unidade.create(1048294, "Segurança Informática")[1]]
     professor = Professor.create(1, unidades)
     user[1].associate_prof(1, commit=True)
@@ -44,7 +45,7 @@ def admin_demo_criar():
 def admin_utilizadores():
     # retora todos os utilizadores exceto o admin
     utilizadores = [{"id": user.id,
-                    "username": user.username,
+                     "username": user.username,
                      "is_professor": True if user.professor_id else False,
                      "is_admin": user.is_admin,
                      "is_active": user.is_active}
@@ -118,10 +119,16 @@ def admin_alunos_id(aluno_id):
 def admin_alunos_associar():
     arduino_response = requests.get("http://localhost:5001/arduino")
     if arduino_response.status_code != 200:
-        return jsonify(error=arduino_response.content), arduino_response.status_code
+        return jsonify(error=arduino_response.text), arduino_response.status_code
 
     params = arduino_response.json()
-    arduino_id, disp_uid = params["identifier"], params["uid"]
+    arduino_response.close()
+    from app import Configuration
+    data = jwt.decode(params['token'],
+                      key=Configuration.ARDUINO_SECRET_KEY,
+                      algorithms=['HS256', ])
+
+    arduino_id, disp_uid = data["identifier"], data["uid"]
     if not arduino_id or not disp_uid:
         return jsonify(error="Arduino não encontrado"), 404
 

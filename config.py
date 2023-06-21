@@ -6,6 +6,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 class Configuration:
     # Configurações da App
     SECRET_KEY = os.environ.get('SECRET_KEY')
+    ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY')
 
     # Configurações da base de dados
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True

@@ -130,10 +130,10 @@ class User(db.Model):
         return check_password_hash(self.password, password)
 
     def get_reset_token(self):
-        import app
+        from app import Configuration
         return jwt.encode(payload={'user': self.username,
                                    'exp': time() + 5 * 60},
-                          key=app.Configuration.SECRET_KEY)
+                          key=Configuration.SECRET_KEY)
 
     def get_associated_unidades(self):
         if not self.professor_id:
@@ -144,8 +144,8 @@ class User(db.Model):
     @staticmethod
     def verify_reset_token(token):
         try:
-            import app
-            data = jwt.decode(token, key=app.Configuration.SECRET_KEY, algorithms=['HS256', ])
+            from app import Configuration
+            data = jwt.decode(token, key=Configuration.SECRET_KEY, algorithms=['HS256', ])
             username = data['user']
             if time() > data['exp']:
                 raise Exception
@@ -154,18 +154,18 @@ class User(db.Model):
         return User.query.filter_by(username=username).first()
 
     def generate_session_token(self):
-        import app
+        from app import Configuration
         return jwt.encode(payload={'user': self.username,
                                    'active': self.is_active,
                                    'admin': self.is_admin},
-                          key=app.Configuration.SECRET_KEY,
+                          key=Configuration.SECRET_KEY,
                           algorithm='HS256')
 
     @staticmethod
     def verify_session_token(token):
         try:
-            import app
-            data = jwt.decode(token, key=app.Configuration.SECRET_KEY, algorithms=['HS256', ])
+            from app import Configuration
+            data = jwt.decode(token, key=Configuration.SECRET_KEY, algorithms=['HS256', ])
             user_exists = User.query.filter_by(username=data['user']).first()
             if not user_exists:
                 raise Exception
