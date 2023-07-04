@@ -104,9 +104,13 @@ def admin_alunos_id(aluno_id):
 
 @admin.route("/admin/alunos/associar", methods=["POST"])
 def admin_alunos_associar():
-    arduino_response = requests.get("http://localhost:5001/arduino")
+    try:
+        arduino_response = requests.get("http://localhost:5001/arduino")
+    except ConnectionError as e:
+        return jsonify(error="Não foi possível estabelecer ligação com o Arduino."), 500
+
     if arduino_response.status_code != 200:
-        return jsonify(error=arduino_response.text), arduino_response.status_code
+        return jsonify(error=arduino_response.json()), arduino_response.status_code
 
     params = arduino_response.json()
     arduino_response.close()

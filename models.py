@@ -279,8 +279,7 @@ class Dispositivo(db.Model):
         if not aluno_exists:
             return False, aluno_exists
 
-        uid = generate_password_hash(uid, method='sha256')
-        uid_exists = Dispositivo.query.filter_by(uid=uid).first()
+        uid_exists = Dispositivo.query.filter_by(uid=uid).all()
         if uid_exists:
             return False, uid_exists
 
@@ -298,7 +297,7 @@ class Dispositivo(db.Model):
         if not aluno:
             return False
 
-        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id).filter_by(uid=uid).first()
+        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id).filter_by(uid=uid).all()
         if not dispositivo:
             return False
 
