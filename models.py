@@ -174,7 +174,7 @@ class User(db.Model):
         return data
 
     @staticmethod
-    def create(username, is_admin=False, is_professor=False, unidades=None, password=None):
+    def create(username, user_id=None, is_admin=False, is_professor=False, unidades=None, password=None):
         if unidades is None:
             unidades = []
         user_exists = User.verify_user(username)
@@ -184,6 +184,7 @@ class User(db.Model):
         random_password = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
 
         user = User()
+        user.id = user_id
         user.username = username
         user.is_admin = is_admin
         user.is_active = True
@@ -330,7 +331,7 @@ class Sala(db.Model):
 
         sala = Sala()
         sala.nome = nome
-        sala.arduino_id = generate_password_hash(arduino_id, method="sha256")
+        sala.arduino_id = arduino_id
 
         db.session.add(sala)
         db.session.commit()
@@ -338,8 +339,7 @@ class Sala(db.Model):
 
     @staticmethod
     def get_sala_by_arduino(arduino_id):
-        arduino_id_hash = generate_password_hash(arduino_id, method="sha256")
-        return Sala.query.filter_by(arduino_id=arduino_id_hash).first()
+        return Sala.query.filter_by(arduino_id=arduino_id).all()
 
 
 class Aula(db.Model):

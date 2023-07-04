@@ -58,7 +58,7 @@ def admin_utilizadores_criar():
     params = request.get_json()
     username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params[
         "unidades"]
-    if not username or is_admin is None or is_professor is None or unidades is None:
+    if not username or not is_admin or not is_professor or not unidades:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:

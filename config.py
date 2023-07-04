@@ -1,17 +1,19 @@
 import os
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-
 
 class Configuration:
     # Configurações da App
-    SECRET_KEY = os.environ.get('SECRET_KEY')
-    ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY')
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'secretkey'
+    ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY') or 'arduinos'
+
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME') or 'admin'
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'admin'
 
     # Configurações da base de dados
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'ulht-prescheck.db')
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                                          'ulht-prescheck.db')
 
     # Configurações do email
     MAIL_SERVER = 'smtp.office365.com'
