@@ -73,6 +73,10 @@ class Professor(db.Model):
     @staticmethod
     def get_unidades(professor_id):
         prof = Professor.query.get(professor_id)
+
+        if not prof:
+            return []
+
         return [{'id': unidade.id, 'nome': unidade.nome} for unidade in prof.unidades]
 
     @staticmethod

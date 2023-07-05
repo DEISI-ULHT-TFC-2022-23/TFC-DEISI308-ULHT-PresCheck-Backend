@@ -1,14 +1,11 @@
 from flask import Blueprint, jsonify, request
 import requests
+from threading import Thread
 
 import auth
 from models import *
 
 admin = Blueprint('admin', __name__)
-
-demo_username = "demo"
-demo_password = "demo"
-
 
 # @admin.before_request
 # def before_request():
@@ -30,7 +27,6 @@ demo_password = "demo"
 
 @admin.route("/admin/utilizadores", methods=["GET"])
 def admin_utilizadores():
-    # retora todos os utilizadores exceto o admin
     utilizadores = [{"id": user.id,
                      "username": user.username,
                      "is_professor": True if user.professor_id else False,
@@ -42,13 +38,13 @@ def admin_utilizadores():
 
 @admin.route("/admin/utilizadores/<int:id_user>", methods=["GET"])
 def admin_utilizadores_id(id_user):
-    # retorna um utilizador específico
     user = User.query.get(id_user)
     if not user:
         return jsonify(error="Utilizador não encontrado"), 404
 
     return jsonify(username=user.username,
                    is_active=user.is_active,
+                   is_admin=user.is_admin,
                    is_professor=True if user.professor_id else False,
                    unidades=user.get_associated_unidades()), 200
 
@@ -56,8 +52,8 @@ def admin_utilizadores_id(id_user):
 @admin.route("/admin/utilizadores/criar", methods=["PUT"])
 def admin_utilizadores_criar():
     params = request.get_json()
-    username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params[
-        "unidades"]
+    username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params["unidades"]
+
     if not username or not is_admin or not is_professor or not unidades:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
@@ -66,20 +62,16 @@ def admin_utilizadores_criar():
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
-        from flask import render_template
-        from threading import Thread
-        from flask_mail import Message
-        msg = Message(
-            subject="ULHT PresCheck - Criação de acesso",
-            recipients=[f"ulht-prescheck@outlook.pt"],
-            html=render_template('send_password.html', user=username, password=user[2])
-        )
         # Envia o email para o utilizador numa thread à parte
-        Thread(target=auth.send_email, args=(msg,)).start()
+        Thread(target=auth.send_email, args=(
+            user[1].username,
+            user[2],
+            "ULHT PresCheck - Criação de acesso",
+            "send_password.html",
+            True,)).start()
 
         return jsonify(message="Utilizador criado com sucesso"), 200
-    except Exception as e:
-        print(e)
+    except Exception:
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
@@ -93,20 +85,23 @@ def admin_alunos():
 @admin.route("/admin/alunos/<int:aluno_id>", methods=["GET"])
 def admin_alunos_id(aluno_id):
     aluno = Aluno.query.get(aluno_id)
+
     if not aluno:
         return jsonify(error="Aluno não encontrado"), 404
 
     dispositivos = [{"uid": dispositivo.uid, "associado_em": dispositivo.created_at} for dispositivo in
                     aluno.dispositivos]
+
     ultimas_presencas = aluno.get_last_classes()
     return jsonify(aluno=aluno.id, dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
 
 
+# TODO: Rever a arquitetura entre backend e arduino
 @admin.route("/admin/alunos/associar", methods=["POST"])
 def admin_alunos_associar():
     try:
         arduino_response = requests.get("http://localhost:5001/arduino")
-    except ConnectionError as e:
+    except ConnectionError:
         return jsonify(error="Não foi possível estabelecer ligação com o Arduino."), 500
 
     if arduino_response.status_code != 200:
@@ -150,8 +145,7 @@ def admin_alunos_criar():
         return jsonify(message="Aluno criado com sucesso"), 200
     except ValueError:
         return jsonify(error="Número de aluno inválido"), 400
-    except Exception as e:
-        print(e)
+    except Exception:
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
@@ -185,8 +179,7 @@ def admin_dispositivo_criar():
             return jsonify(error="Dispositivo já existente"), 409
 
         return jsonify(), 200
-    except Exception as e:
-        print(e)
+    except Exception:
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
@@ -200,6 +193,5 @@ def admin_dispositivo_eliminar(aluno_id, uid):
             return jsonify(error="Não foi possível eliminar o dispositivo."), 404
 
         return jsonify(), 200
-    except Exception as e:
-        print(e)
+    except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500

@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from flask_mail import Message
 from uuid import uuid4
 from threading import Thread
 
@@ -8,8 +7,17 @@ from models import User
 auth = Blueprint('auth', __name__)
 
 
-def send_email(msg):
+def send_email(username, data, subject, template, demo=False):
     from app import app, mail
+    from flask import render_template
+    from flask_mail import Message
+    recipient = f"{username}@ulusofona.pt" if not demo else "ulht-prescheck@outlook.pt"
+    msg = Message(
+        subject=subject,
+        recipients=[recipient],
+        html=render_template(template, user=username, data=data)
+    )
+
     with app.app_context():
         mail.send(msg)
 
@@ -60,15 +68,12 @@ def recuperar_senha():
         # Retorna JSON do erro
         return jsonify(error='O utilizador não existe. Contacte a Secretaria do DEISI.'), 404
 
-    # Prepara o objeto de mensagem de email
-    from flask import render_template
-    msg = Message(
-        subject="ULHT PresCheck - Recuperar senha",
-        recipients=[f"{user}@ulusofona.pt"],
-        html=render_template('reset_email.html', user=user.username, token=user.get_reset_token())
-    )
     # Envia o email para o utilizador numa thread à parte
-    Thread(target=send_email, args=(msg,)).start()
+    Thread(target=send_email, args=(
+        user.username,
+        user.get_reset_token(),
+        "ULHT PresCheck - Recuperação",
+        "reset_email.html",)).start()
 
     # Retorna JSON de sucesso
     return jsonify(message="Email enviado com sucesso."), 200
