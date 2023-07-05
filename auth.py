@@ -7,18 +7,18 @@ from models import User
 auth = Blueprint('auth', __name__)
 
 
-def send_email(username, data, subject, template, demo=False):
+def send_email(username, data, subject, template, demo=True):  # TODO: Mudar para False quando for para produção
     from app import app, mail
     from flask import render_template
     from flask_mail import Message
-    recipient = f"{username}@ulusofona.pt" if not demo else "ulht-prescheck@outlook.pt"
-    msg = Message(
-        subject=subject,
-        recipients=[recipient],
-        html=render_template(template, user=username, data=data)
-    )
+    recipient = f"{username}@ulusofona.pt" if not demo else app.config['MAIL_USERNAME']
 
     with app.app_context():
+        msg = Message(
+            subject=subject,
+            recipients=[recipient],
+            html=render_template(template, user=username, data=data)
+        )
         mail.send(msg)
 
 
@@ -43,7 +43,7 @@ def login():
                              'contacte a Secretaria do DEISI.'), 401
 
     # Cria o token de sessão do utilizador
-    token = uuid4()
+    token = uuid4()  # TODO: Alterar para JWT
 
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
     return jsonify(token=token, professor_id=login_result[1]['professor_id'], is_admin=login_result[1]['is_admin']), 200

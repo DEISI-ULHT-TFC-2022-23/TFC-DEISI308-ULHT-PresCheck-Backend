@@ -7,6 +7,7 @@ from models import *
 
 admin = Blueprint('admin', __name__)
 
+
 # @admin.before_request
 # def before_request():
 #     authorization_header = request.headers.get("Authorization")
@@ -27,8 +28,7 @@ admin = Blueprint('admin', __name__)
 
 @admin.route("/admin/utilizadores", methods=["GET"])
 def admin_utilizadores():
-    utilizadores = [{"id": user.id,
-                     "username": user.username,
+    utilizadores = [{"username": user.username,
                      "is_professor": True if user.professor_id else False,
                      "is_admin": user.is_admin,
                      "is_active": user.is_active}
@@ -36,9 +36,9 @@ def admin_utilizadores():
     return jsonify(utilizadores=utilizadores), 200
 
 
-@admin.route("/admin/utilizadores/<int:id_user>", methods=["GET"])
-def admin_utilizadores_id(id_user):
-    user = User.query.get(id_user)
+@admin.route("/admin/utilizadores/<string:username>", methods=["GET"])
+def admin_utilizadores_username(username):
+    user = User.verify_user(username=username)
     if not user:
         return jsonify(error="Utilizador não encontrado"), 404
 
@@ -52,9 +52,10 @@ def admin_utilizadores_id(id_user):
 @admin.route("/admin/utilizadores/criar", methods=["PUT"])
 def admin_utilizadores_criar():
     params = request.get_json()
-    username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params["unidades"]
+    username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params[
+        "unidades"]
 
-    if not username or not is_admin or not is_professor or not unidades:
+    if not username or unidades is None or is_admin is None or is_professor is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
@@ -62,17 +63,62 @@ def admin_utilizadores_criar():
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
-        # Envia o email para o utilizador numa thread à parte
         Thread(target=auth.send_email, args=(
             user[1].username,
             user[2],
             "ULHT PresCheck - Criação de acesso",
-            "send_password.html",
-            True,)).start()
+            "send_password.html",)).start()
 
         return jsonify(message="Utilizador criado com sucesso"), 200
     except Exception:
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+
+
+@admin.route("/admin/utilizadores/editar/<string:username>", methods=["PUT"])
+def admin_utilizadores_editar(username):
+    params = request.get_json()
+    is_admin, is_active = params["admin"], params["active"]
+
+    if is_admin is None or is_active is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    user = User.verify_user(username=username)
+    if not user:
+        return jsonify(error="Utilizador não encontrado"), 404
+
+    user.update(is_admin=is_admin, is_active=is_active, commit=True)
+    return jsonify(message="Utilizador editado com sucesso"), 200
+
+
+@admin.route("/admin/uilizadores/<string:username>/unidades/associar", methods=["POST"])
+def admin_utilizadores_unidades_associar(username):
+    params = request.get_json()
+    unidades = params["unidades"]
+
+    if unidades is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    user = User.verify_user(username=username)
+    if not user or user.professor_id is None:
+        return jsonify(error="Utilizador não encontrado ou não é professor"), 404
+
+    user_prof = user.get_professor()
+    user_prof.associate_unidades(unidades=unidades, commit=True)
+
+    return jsonify(message="Unidades associadas com sucesso"), 200
+
+
+@admin.route("/admin/uilizadores/<string:username>/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
+def admin_utilizadores_unidades_associar(username, unidade_id):
+
+    user = User.verify_user(username=username)
+    if not user or user.professor_id is None:
+        return jsonify(error="Utilizador não encontrado ou não é professor"), 404
+
+    user_prof = user.get_professor()
+    user_prof.remove_unidade(unidade_id=unidade_id, commit=True)
+
+    return jsonify(message="Unidades associadas com sucesso"), 200
 
 
 @admin.route("/admin/alunos", methods=["GET"])
@@ -96,7 +142,6 @@ def admin_alunos_id(aluno_id):
     return jsonify(aluno=aluno.id, dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
 
 
-# TODO: Rever a arquitetura entre backend e arduino
 @admin.route("/admin/alunos/associar", methods=["POST"])
 def admin_alunos_associar():
     try:

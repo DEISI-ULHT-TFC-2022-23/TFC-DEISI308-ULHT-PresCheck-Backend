@@ -70,14 +70,18 @@ class Professor(db.Model):
         if commit:
             db.session.commit()
 
+    def remove_unidade(self, unidade_id, commit=False):
+        unidade = Unidade.query.get(unidade_id)
+        if unidade:
+            self.unidades.remove(unidade)
+
+        if commit:
+            db.session.commit()
+
     @staticmethod
     def get_unidades(professor_id):
         prof = Professor.query.get(professor_id)
-
-        if not prof:
-            return []
-
-        return [{'id': unidade.id, 'nome': unidade.nome} for unidade in prof.unidades]
+        return [{'id': unidade.id, 'nome': unidade.nome} for unidade in prof.unidades] or []
 
     @staticmethod
     def create(professor_id, unidades):
@@ -144,6 +148,16 @@ class User(db.Model):
             return []
 
         return Professor.get_unidades(self.professor_id)
+
+    def update(self, is_admin, is_active, commit=False):
+        self.is_admin = is_admin
+        self.is_active = is_active
+
+        if commit:
+            db.session.commit()
+
+    def get_professor(self):
+        return Professor.query.get(self.professor_id)
 
     @staticmethod
     def verify_reset_token(token):
