@@ -109,8 +109,7 @@ def admin_utilizadores_unidades_associar(username):
 
 
 @admin.route("/admin/uilizadores/<string:username>/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
-def admin_utilizadores_unidades_associar(username, unidade_id):
-
+def admin_utilizadores_unidades_eliminar(username, unidade_id):
     user = User.verify_user(username=username)
     if not user or user.professor_id is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
