@@ -239,3 +239,49 @@ def admin_dispositivo_eliminar(aluno_id, uid):
         return jsonify(), 200
     except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+
+
+@admin.route("/admin/unidades", methods=["GET"])
+def admin_unidades():
+    unidades = [{"id": unidade.id, "nome": unidade.nome, "sigla": unidade.sigla} for unidade in Unidade.query.all()]
+    return jsonify(unidades=unidades), 200
+
+
+@admin.route("/admin/unidades/<int:unidade_id>", methods=["GET"])
+def admin_unidades_id(unidade_id):
+    unidade = Unidade.query.get(unidade_id)
+
+    if not unidade:
+        return jsonify(error="Unidade não encontrada"), 404
+
+    return jsonify(unidade=unidade.id, nome=unidade.nome), 200
+
+
+@admin.route("/admin/unidades/criar", methods=["POST"])
+def admin_unidades_criar():
+    params = request.get_json()
+    unidade_id, nome = params["id"], params["nome"]
+    if not unidade_id or not nome:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        unidade = Unidade.create(unidade_id, nome)
+        if unidade[0] is False:
+            return jsonify(error="Unidade já existente"), 409
+
+        return jsonify(message="Unidade criada com sucesso"), 200
+    except Exception:
+        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+
+
+@admin.route("/admin/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
+def admin_unidades_eliminar(unidade_id):
+    try:
+        unidade = Unidade.delete(unidade_id)
+
+        if unidade is False:
+            return jsonify(error="Unidade não encontrada"), 404
+
+        return jsonify(), 200
+    except Exception:
+        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500

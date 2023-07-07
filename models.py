@@ -46,6 +46,15 @@ class Unidade(db.Model):
         db.session.commit()
         return True, unidade
 
+    @staticmethod
+    def delete(unidade_id):
+        unidade = Unidade.query.get(unidade_id)
+        if unidade:
+            db.session.delete(unidade)
+            db.session.commit()
+            return True
+        return False
+
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
