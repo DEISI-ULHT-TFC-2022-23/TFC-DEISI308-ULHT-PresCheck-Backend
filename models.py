@@ -20,7 +20,8 @@ professor_unidade = db.Table('professor_unidade',
 
 
 class Unidade(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    codigo = db.Column(db.String, unique=True, nullable=False)
     nome = db.Column(db.String, nullable=False)
     aulas = db.relationship('Aula', backref='unidade')
     created_at = db.Column(db.DateTime, server_default=func.now())
@@ -30,16 +31,16 @@ class Unidade(db.Model):
         return '<Unidade %r>' % self.id
 
     def __str__(self):
-        return self.nome
+        return f"{self.codigo} | {self.nome}"
 
     @staticmethod
-    def create(unidade_id, nome):
-        unidade_exists = Unidade.query.get(unidade_id)
+    def create(codigo, nome):
+        unidade_exists = Unidade.query.filter_by(codigo=codigo).first()
         if unidade_exists:
             return False, unidade_exists
 
         unidade = Unidade()
-        unidade.id = unidade_id
+        unidade.codigo = codigo
         unidade.nome = nome
 
         db.session.add(unidade)
@@ -90,7 +91,7 @@ class Professor(db.Model):
     @staticmethod
     def get_unidades(professor_id):
         prof = Professor.query.get(professor_id)
-        return [{'id': unidade.id, 'nome': unidade.nome} for unidade in prof.unidades] or []
+        return [{'id': unidade.id, 'codigo': unidade.codigo, 'nome': unidade.nome} for unidade in prof.unidades] or []
 
     @staticmethod
     def create(professor_id, unidades):

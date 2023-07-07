@@ -243,29 +243,29 @@ def admin_dispositivo_eliminar(aluno_id, uid):
 
 @admin.route("/admin/unidades", methods=["GET"])
 def admin_unidades():
-    unidades = [{"id": unidade.id, "nome": unidade.nome, "sigla": unidade.sigla} for unidade in Unidade.query.all()]
+    unidades = [{"id": unidade.id, "nome": unidade.nome, "codigo": unidade.codigo} for unidade in Unidade.query.all()]
     return jsonify(unidades=unidades), 200
 
 
-@admin.route("/admin/unidades/<int:unidade_id>", methods=["GET"])
-def admin_unidades_id(unidade_id):
-    unidade = Unidade.query.get(unidade_id)
+@admin.route("/admin/unidades/<string:codigo>", methods=["GET"])
+def admin_unidades_id(codigo):
+    unidade = Unidade.query.filter_by(codigo=codigo).first()
 
     if not unidade:
         return jsonify(error="Unidade não encontrada"), 404
 
-    return jsonify(unidade=unidade.id, nome=unidade.nome), 200
+    return jsonify(id=unidade.id, codigo=unidade.codigo, nome=unidade.nome), 200
 
 
 @admin.route("/admin/unidades/criar", methods=["POST"])
 def admin_unidades_criar():
     params = request.get_json()
-    unidade_id, nome = params["id"], params["nome"]
-    if not unidade_id or not nome:
+    codigo, nome = params["codigo"], params["nome"]
+    if not codigo or not nome:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        unidade = Unidade.create(unidade_id, nome)
+        unidade = Unidade.create(codigo, nome)
         if unidade[0] is False:
             return jsonify(error="Unidade já existente"), 409
 
