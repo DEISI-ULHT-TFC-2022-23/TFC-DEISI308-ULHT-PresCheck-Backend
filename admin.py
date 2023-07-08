@@ -254,9 +254,11 @@ def admin_unidades_id(codigo):
     if not unidade:
         return jsonify(error="Unidade não encontrada"), 404
 
-    professores = Professor.query.join(Professor.unidades).filter(Unidade.id == unidade.id).all()
-    return jsonify(id=unidade.id, codigo=unidade.codigo,
-                   nome=unidade.nome, professores=[professor.user.username for professor in professores]), 200
+    professores = [f"p{professor.id}"
+                   for professor
+                   in Professor.query.join(Professor.unidades).filter(Unidade.id == unidade.id).all()]
+
+    return jsonify(id=unidade.id, codigo=unidade.codigo, nome=unidade.nome, professores=professores), 200
 
 
 @admin.route("/admin/unidades/criar", methods=["POST"])
