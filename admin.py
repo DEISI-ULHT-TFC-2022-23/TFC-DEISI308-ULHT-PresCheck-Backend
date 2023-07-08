@@ -289,3 +289,39 @@ def admin_unidades_eliminar(unidade_id):
         return jsonify(), 200
     except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+
+
+@admin.route("/admin/salas", methods=["GET"])
+def admin_salas():
+    salas = [{"id": sala.id, "nome": sala.nome, "arduino": sala.arduino_id} for sala in Sala.query.all()]
+    return jsonify(salas=salas), 200
+
+
+@admin.route("/admin/salas/criar", methods=["POST"])
+def admin_salas_criar():
+    params = request.get_json()
+    nome, arduino_id = params["nome"], params["arduino"]
+    if not nome or not arduino_id:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        sala = Sala.create(nome, arduino_id)
+        if sala[0] is False:
+            return jsonify(error="Sala já existente"), 409
+
+        return jsonify(message="Sala criada com sucesso"), 200
+    except Exception:
+        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+
+
+@admin.route("/admin/salas/eliminar/<int:sala_id>", methods=["DELETE"])
+def admin_salas_eliminar(sala_id):
+    try:
+        sala = Sala.delete(sala_id)
+
+        if sala is False:
+            return jsonify(error="Sala não encontrada"), 404
+
+        return jsonify(), 200
+    except Exception:
+        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500

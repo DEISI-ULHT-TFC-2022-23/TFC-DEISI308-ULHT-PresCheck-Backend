@@ -365,6 +365,15 @@ class Sala(db.Model):
         return True, sala
 
     @staticmethod
+    def delete(sala_id):
+        sala = Sala.query.get(sala_id)
+        if sala:
+            db.session.delete(sala)
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
     def get_sala_by_arduino(arduino_id):
         return Sala.query.filter_by(arduino_id=arduino_id).all()
 
