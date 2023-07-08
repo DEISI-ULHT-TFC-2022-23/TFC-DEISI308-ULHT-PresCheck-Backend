@@ -90,7 +90,7 @@ def admin_utilizadores_editar(username):
     return jsonify(message="Utilizador editado com sucesso"), 200
 
 
-@admin.route("/admin/uilizadores/<string:username>/unidades/associar", methods=["POST"])
+@admin.route("/admin/utilizadores/<string:username>/unidades/associar", methods=["POST"])
 def admin_utilizadores_unidades_associar(username):
     params = request.get_json()
     unidades = params["unidades"]
@@ -108,7 +108,7 @@ def admin_utilizadores_unidades_associar(username):
     return jsonify(message="Unidades associadas com sucesso"), 200
 
 
-@admin.route("/admin/uilizadores/<string:username>/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
+@admin.route("/admin/utilizadores/<string:username>/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
 def admin_utilizadores_unidades_eliminar(username, unidade_id):
     user = User.verify_user(username=username)
     if not user or user.professor_id is None:
@@ -254,7 +254,9 @@ def admin_unidades_id(codigo):
     if not unidade:
         return jsonify(error="Unidade não encontrada"), 404
 
-    return jsonify(id=unidade.id, codigo=unidade.codigo, nome=unidade.nome), 200
+    professores = Professor.query.join(Professor.unidades).filter(Unidade.id == unidade.id).all()
+    return jsonify(id=unidade.id, codigo=unidade.codigo,
+                   nome=unidade.nome, professores=[professor.user.username for professor in professores]), 200
 
 
 @admin.route("/admin/unidades/criar", methods=["POST"])
