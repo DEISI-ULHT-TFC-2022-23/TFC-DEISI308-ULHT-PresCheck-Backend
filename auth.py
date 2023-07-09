@@ -43,7 +43,7 @@ def login():
                              'contacte a Secretaria do DEISI.'), 401
 
     # Cria o token de sessão do utilizador
-    token = uuid4()  # TODO: Alterar para JWT
+    token = login_result[1].generate_session_token()
 
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
     return jsonify(token=token, professor_id=login_result[1]['professor_id'], is_admin=login_result[1]['is_admin']), 200
@@ -102,4 +102,30 @@ def recuperar_senha_alterar():
     user.set_password(password, commit=True)
 
     # Retorna JSON de sucesso
+    return jsonify(message="Senha alterada com sucesso."), 200
+
+
+@auth.route("/conta/alterar-senha", methods=["POST"])
+def alterar_senha():
+    # Recebe os dados enviados no corpo do request
+    params = request.get_json()
+    username, password, new_password = params['username'], params['password'], params['new_password']
+
+    # Verifica se os parâmetros foram recebidos
+    if not username or not password or not new_password:
+        # Retorna JSON do erro
+        return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
+
+    # Verificar se o utilizador existe e retorna o objeto
+    user = User.verify_user(username)
+
+    # Verifica se o utilizador existe na base de dados e a senha fornecida está correta
+    if not user or not user.verify_password(password):
+        # Retorna JSON do erro
+        return jsonify(error='Acesso negado. Verifique os seus dados e tente novamente. Caso tenha problemas, '
+                             'contacte a Secretaria do DEISI.'), 401
+
+    # Atualiza a password do utilizador na base de dados
+    user.set_password(new_password, commit=True)
+
     return jsonify(message="Senha alterada com sucesso."), 200
