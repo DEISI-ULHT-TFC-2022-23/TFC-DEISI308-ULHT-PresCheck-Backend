@@ -234,9 +234,9 @@ class User(db.Model):
 
         if user:
             if user.verify_password(password) and user.is_active:
-                return True, {'professor_id': user.professor_id, 'is_admin': user.is_admin}
+                return True, user
 
-        return False, {}
+        return False, None
 
     @staticmethod
     def verify_user(username):
