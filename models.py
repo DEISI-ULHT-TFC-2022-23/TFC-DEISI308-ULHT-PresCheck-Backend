@@ -396,12 +396,13 @@ class Aula(db.Model):
         return '%s em %s' % (unidade.nome, data_formatada)
 
     @staticmethod
-    def create(nome_sala, unidade_id, professor_id):
+    def create(nome_sala, unidade_id, professor_id, data_aula):
         sala = Sala.query.filter_by(nome=nome_sala).first()
         aula = Aula()
         aula.sala_id = sala.id
         aula.unidade_id = unidade_id
         aula.professor_id = professor_id
+        aula.created_at = data_aula
 
         db.session.add(aula)
         db.session.commit()
@@ -410,9 +411,7 @@ class Aula(db.Model):
     @staticmethod
     def export(aula_id):
         aula = Aula.query.get(aula_id)
-
-        presencas_aula = Presenca.query.filter_by(aula_id=aula_id).all()
-        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in presencas_aula]
+        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas]
         return data, aula.created_at.strftime('%d/%m/%Y às %H:%M')
 
 
@@ -433,11 +432,12 @@ class Presenca(db.Model):
     def create(aula_id, alunos):
         presencas = []
         for aluno in alunos:
-            aluno_selecionado = Aluno.create(aluno)
-            if not aluno_selecionado:
-                aluno_selecionado = aluno_selecionado[1]
+            aluno_selecionado = Aluno.create(aluno["numero"])
 
-            nova_presenca = Presenca(aula_id=aula_id, aluno_id=aluno_selecionado[1].id)
+            nova_presenca = Presenca()
+            nova_presenca.aula_id = aula_id
+            nova_presenca.aluno_id = aluno_selecionado[1].id
+            nova_presenca.created_at = aluno["timestamp"]
             presencas.append(nova_presenca)
 
         db.session.add_all(presencas)

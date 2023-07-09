@@ -3,6 +3,7 @@ import requests
 from threading import Thread
 
 import auth
+from main import aulas_a_decorrer
 from models import *
 
 admin = Blueprint('admin', __name__)
@@ -325,3 +326,79 @@ def admin_salas_eliminar(sala_id):
         return jsonify(), 200
     except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+
+
+@admin.route("/admin/aulas/<string:tipo>", methods=["GET"])
+def admin_aulas(tipo):
+    match tipo:
+        case "todas":
+            # Todas as aulas
+            return jsonify(aulas=[{
+                "id": aula.id,
+                "unidade": aula.unidade.nome,
+                "sala": aula.sala.nome,
+                "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
+            } for aula in Aula.query.all()]), 200
+
+        case "ativas":
+            # Aulas ativas
+            return jsonify(aulas=[{
+                "sala": sala,
+                "estado": dados["estado"],
+                "inicio": dados["inicio"].strftime("%d/%m/%Y %H:%M"),
+                "unidade": Unidade.query.filter_by(id=dados["unidade_id"]).first().nome,
+            } for sala, dados in aulas_a_decorrer.items()]), 200
+
+        case _:
+            return jsonify(error="Tipo de aula inválido"), 400
+
+
+@admin.route("/admin/aulas/<string:tipo>/<string:aula>", methods=["GET"])
+def admin_aulas_detalhes(tipo, aula):
+    match tipo:
+        case "todas":
+            # Todas as aulas
+            aula = Aula.query.filter_by(id=aula).first()
+            if not aula:
+                return jsonify(error="Aula não encontrada"), 404
+
+            return jsonify(aula={
+                "id": aula.id,
+                "unidade": {
+                    "codigo": aula.unidade.codigo,
+                    "nome": aula.unidade.nome
+                },
+                "sala": aula.sala.nome,
+                "professor": aula.professor.user.username,
+                "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
+                "presencas": [{
+                    "aluno": presenca.aluno.id,
+                    "presenca": presenca.created_at.strftime("%d/%m/%Y %H:%M")
+                } for presenca in Presenca.query.filter_by(aula_id=aula.id).all()] or [],
+            }), 200
+
+        case "ativas":
+            # Aulas ativas
+            dados = aulas_a_decorrer.get(aula)
+
+            if not dados:
+                return jsonify(error="Aula não encontrada"), 404
+
+            unidade = Unidade.query.get(dados["unidade_id"])
+            return jsonify(aula={
+                "sala": aula,
+                "estado": dados["estado"],
+                "inicio": dados["inicio"].strftime("%d/%m/%Y %H:%M"),
+                "unidade": {
+                    "codigo": unidade.codigo,
+                    "nome": unidade.nome
+                },
+                "professor": Professor.query.get(dados["professor_id"]).user.username,
+                "presencas": [{
+                    "aluno": presenca["numero"],
+                    "presenca": presenca["timestamp"].strftime("%d/%m/%Y %H:%M")
+                } for presenca in dados.alunos],
+            }), 200
+
+        case _:
+            return jsonify(error="Tipo de aula inválido"), 400

@@ -1,5 +1,4 @@
 import datetime
-
 from flask import Blueprint, request, jsonify
 
 from models import *
@@ -13,7 +12,17 @@ Formato:
         estado: STOP/GO,
         unidade_id: (ID da unidade),
         professor_id: (ID do professor),
-        alunos : [(Número aluno 1), (Número aluno 2), ...]
+        inicio: (Timestamp de início da aula),
+        alunos : [
+            {
+                "numero": (Número do aluno 1),
+                "timpestamp": (Timestamp de entrada do aluno 1)
+            },
+            {
+                "numero": (Número do aluno 2),
+                "timpestamp": (Timestamp de entrada do aluno 2)
+            }
+        ]
     }
 }
 """
@@ -92,6 +101,7 @@ def iniciar_aula():
         'estado': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
+        'inicio': datetime.datetime.now(),
         'alunos': []
     }
 
@@ -116,10 +126,16 @@ def controlar_aula():
             # Atualiza o estado da aula em andamento para "GO"
             aulas_a_decorrer[sala_param]['estado'] = 'GO'
             return jsonify(state="GO"), 200
+
         case "STOP":
             # Atualiza o estado da aula em andamento para "STOP"
             aulas_a_decorrer[sala_param]['estado'] = 'STOP'
             return jsonify(state="STOP"), 200
+
+        case "CANCEL":
+            # Atualiza o estado da aula em andamento para "STOP"
+            del aulas_a_decorrer[sala_param]
+            return jsonify(state="CANCEL"), 200
 
         case "FINISH":
             # Obtém os dados da sala em andamento
@@ -128,7 +144,8 @@ def controlar_aula():
             # Cria uma aula na base de dados com as informações da sala em andamento
             nova_aula = Aula.create(sala_param,
                                     dados_sala['unidade_id'],
-                                    dados_sala['professor_id'])
+                                    dados_sala['professor_id'],
+                                    dados_sala['inicio'])
 
             # Cria as presenças na base de dados associadas à aula
             Presenca.create(nova_aula[1].id, dados_sala['alunos'])
@@ -203,12 +220,12 @@ def arduino_presenca():
     if not aluno:
         return jsonify(error="Não existe nenhum aluno associado ao UID lido."), 404
 
-    if aluno.id in sala_selecionada['alunos']:
+    if any(aluno["numero"] == aluno.id for aluno in sala_selecionada['alunos']):
         return jsonify(error="Aluno já está na lista de presenças"), 304
 
     # Adiciona o número do aluno à lista de presenças,
     # avisa que existem alunos novos na lista e retorna uma resposta JSON com o código 200 OK
-    sala_selecionada['alunos'].append(aluno.id)
+    sala_selecionada['alunos'].append({"numero": aluno.id, "timestamp": datetime.datetime.now()})
     return jsonify(message="Marcação da presença efetuada com sucesso."), 201
 
 
@@ -234,12 +251,12 @@ def marcar_presenca():
         return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
 
     # Verifica se o aluno inserido já consta na lista de alunos da aula a decorrer
-    if num_aluno in sala_selecionada['alunos']:
+    if any(aluno["numero"] == num_aluno for aluno in sala_selecionada['alunos']):
         return jsonify(error="Este aluno já tem a sua presença registada."), 304
 
     # Adiciona o número do aluno à lista de presenças,
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
-    sala_selecionada['alunos'].append(num_aluno)
+    sala_selecionada['alunos'].append({"numero": num_aluno, "timestamp": datetime.datetime.now()})
     return jsonify(message="Marcação da presença efetuada com sucesso."), 201
 
 
@@ -261,10 +278,10 @@ def eliminar_presenca():
     sala_selecionada = aulas_a_decorrer[sala_a_controlar]
 
     # Verifica se o aluno inserido não consta na lista de alunos da aula a decorrer
-    if num_aluno not in sala_selecionada['alunos']:
+    if any(aluno["numero"] == num_aluno for aluno in sala_selecionada['alunos']):
         return jsonify(error="Este aluno não consta na lista de presenças."), 409
 
     # Adiciona o número do aluno à lista de presenças,
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
-    sala_selecionada['alunos'].remove(num_aluno)
+    sala_selecionada['alunos'] = [aluno for aluno in sala_selecionada['alunos'] if aluno["numero"] != num_aluno]
     return jsonify(message="Aluno retirado da lista com sucesso"), 200

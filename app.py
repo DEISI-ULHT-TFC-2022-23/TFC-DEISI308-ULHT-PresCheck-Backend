@@ -44,3 +44,6 @@ if __name__ == "__main__":
 # TODO: Implementar JWT em todas as rotas
 # TODO: Alterar os métodos HTTP para os corretos (ex: PUT para POST na criação de objetos)
 # TODO: Implementar paginação nas rotas de listagem
+# TODO: Rever a implementação do CORS
+# TODO: Rever as rotas do main.py para melhorar a arquitetura
+# TODO: Decidir as estatisticas a apresentar
