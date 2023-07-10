@@ -374,7 +374,7 @@ def admin_aulas_detalhes(tipo, aula):
                 "presencas": [{
                     "aluno": presenca.aluno.id,
                     "presenca": presenca.created_at.strftime("%d/%m/%Y %H:%M")
-                } for presenca in Presenca.query.filter_by(aula_id=aula.id).all()] or [],
+                } for presenca in Presenca.query.filter_by(aula_id=aula.id).all()],
             }), 200
 
         case "ativas":
@@ -397,7 +397,7 @@ def admin_aulas_detalhes(tipo, aula):
                 "presencas": [{
                     "aluno": presenca["numero"],
                     "presenca": presenca["timestamp"].strftime("%d/%m/%Y %H:%M")
-                } for presenca in dados.alunos],
+                } for presenca in dados["alunos"]],
             }), 200
 
         case _:
