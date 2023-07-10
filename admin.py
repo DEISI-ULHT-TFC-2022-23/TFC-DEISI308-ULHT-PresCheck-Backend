@@ -369,7 +369,7 @@ def admin_aulas_detalhes(tipo, aula):
                     "nome": aula.unidade.nome
                 },
                 "sala": aula.sala.nome,
-                "professor": aula.professor.user.username,
+                "professor": f"p{aula.professor.id}",
                 "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
                 "presencas": [{
                     "aluno": presenca.aluno.id,
@@ -393,7 +393,7 @@ def admin_aulas_detalhes(tipo, aula):
                     "codigo": unidade.codigo,
                     "nome": unidade.nome
                 },
-                "professor": Professor.query.get(dados["professor_id"]).user.username,
+                "professor": f"p{Professor.query.get(dados['professor_id']).id}",
                 "presencas": [{
                     "aluno": presenca["numero"],
                     "presenca": presenca["timestamp"].strftime("%d/%m/%Y %H:%M")
