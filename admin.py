@@ -30,7 +30,7 @@ admin = Blueprint('admin', __name__)
 @admin.route("/admin/utilizadores", methods=["GET"])
 def admin_utilizadores():
     utilizadores = [{"username": user.username,
-                     "is_professor": True if user.professor else False,
+                     "is_professor": True if user.professor_id else False,
                      "is_admin": user.is_admin,
                      "is_active": user.is_active}
                     for user in User.query.filter(User.id != 1).all()]
@@ -46,7 +46,7 @@ def admin_utilizadores_username(username):
     return jsonify(username=user.username,
                    is_active=user.is_active,
                    is_admin=user.is_admin,
-                   is_professor=True if user.professor else False,
+                   is_professor=True if user.professor_id else False,
                    unidades=user.get_associated_unidades(),
                    turmas=user.get_associated_turmas()), 200
 
@@ -103,7 +103,7 @@ def admin_utilizadores_unidades_associar(username):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     user = User.verify_user(username=username)
-    if not user or user.professor is None:
+    if not user or user.professor_id is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
 
     user_prof = user.get_professor()
@@ -115,7 +115,7 @@ def admin_utilizadores_unidades_associar(username):
 @admin.route("/admin/utilizadores/<string:username>/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
 def admin_utilizadores_unidades_eliminar(username, unidade_id):
     user = User.verify_user(username=username)
-    if not user or user.professor is None:
+    if not user or user.professor_id is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
 
     user_prof = user.get_professor()
@@ -133,7 +133,7 @@ def admin_utilizadores_turmas_associar(username):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     user = User.verify_user(username=username)
-    if not user or user.professor is None:
+    if not user or user.professor_id is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
 
     user_prof = user.get_professor()
@@ -145,7 +145,7 @@ def admin_utilizadores_turmas_associar(username):
 @admin.route("/admin/utilizadores/<string:username>/turmas/eliminar/<int:turma_id>", methods=["DELETE"])
 def admin_utilizadores_turmas_eliminar(username, turma_id):
     user = User.verify_user(username=username)
-    if not user or user.professor is None:
+    if not user or user.professor_id is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
 
     user_prof = user.get_professor()
@@ -434,8 +434,8 @@ def admin_aulas(tipo):
             # Todas as aulas
             return jsonify(aulas=[{
                 "id": aula.id,
-                "unidade": aula.unidade.nome,
-                "sala": aula.sala.nome,
+                "unidade": aula.unidade_id.nome,
+                "sala": aula.sala_id.nome,
                 "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
             } for aula in Aula.query.all()]), 200
 
@@ -464,14 +464,14 @@ def admin_aulas_detalhes(tipo, aula):
             return jsonify(aula={
                 "id": aula.id,
                 "unidade": {
-                    "codigo": aula.unidade.codigo,
-                    "nome": aula.unidade.nome
+                    "codigo": aula.unidade_id.codigo,
+                    "nome": aula.unidade_id.nome
                 },
-                "sala": aula.sala.nome,
-                "professor": f"p{aula.professor.id}",
+                "sala": aula.sala_id.nome,
+                "professor": f"p{aula.professor_id.id}",
                 "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
                 "presencas": [{
-                    "aluno": presenca.aluno.id,
+                    "aluno": presenca.aluno_id.id,
                     "presenca": presenca.created_at.strftime("%d/%m/%Y %H:%M")
                 } for presenca in Presenca.query.filter_by(aula_id=aula.id).all()],
             }), 200

@@ -149,7 +149,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean(), nullable=False)
     is_active = db.Column(db.Boolean(), nullable=False)
     reset_token = db.Column(db.Integer, nullable=True)
-    professor = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True)
+    professor_id = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -165,7 +165,7 @@ class User(db.Model):
         except NoResultFound:
             return False
 
-        self.professor = professor_id
+        self.professor_id = professor_id
 
         if commit:
             db.session.commit()
@@ -182,16 +182,16 @@ class User(db.Model):
         return check_password_hash(self.password, password)
 
     def get_associated_unidades(self):
-        if not self.professor:
+        if not self.professor_id:
             return []
 
-        return Professor.get_unidades(self.professor)
+        return Professor.get_unidades(self.professor_id)
 
     def get_associated_turmas(self):
-        if not self.professor:
+        if not self.professor_id:
             return []
 
-        return Professor.get_turmas(self.professor)
+        return Professor.get_turmas(self.professor_id)
 
     def update(self, is_admin, is_active, commit=False):
         self.is_admin = is_admin
@@ -201,7 +201,7 @@ class User(db.Model):
             db.session.commit()
 
     def get_professor(self):
-        return Professor.query.get(self.professor)
+        return Professor.query.get(self.professor_id)
 
     def generate_session_token(self):
         from app import Configuration
@@ -346,7 +346,7 @@ class Turma(db.Model):
 
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    turma = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False)
+    turma_id = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False)
     presencas = db.relationship('Presenca', backref='aluno', cascade="all,delete")
     dispositivos = db.relationship('Dispositivo', backref='aluno', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
@@ -361,10 +361,10 @@ class Aluno(db.Model):
     def get_last_classes(self, n=5):
         presencas = Presenca.query.filter_by(aluno_id=self.id).join(Aula).join(Unidade).order_by(
             Presenca.created_at.desc()).limit(n).all()
-        return [{"unidade": presenca.aula.unidade.nome, "presenca": presenca.created_at} for presenca in presencas]
+        return [{"unidade": presenca.aula_id.unidade_id.nome, "presenca": presenca.created_at} for presenca in presencas]
 
     def get_turma_name(self):
-        return Turma.query.get(self.turma).nome
+        return Turma.query.get(self.turma_id).nome
 
     @staticmethod
     def create(aluno_id, turma_id):
@@ -398,7 +398,7 @@ class Aluno(db.Model):
 class Dispositivo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uid = db.Column(db.String(100), unique=True, nullable=False)
-    aluno = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
+    aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -406,7 +406,7 @@ class Dispositivo(db.Model):
         return '<Dispositivo %r>' % self.id
 
     def __str__(self):
-        return '%s (de: %s)' % (self.uid, self.aluno)
+        return '%s (de: %s)' % (self.uid, self.aluno_id)
 
     @staticmethod
     def create(uid, aluno_id):
@@ -420,7 +420,7 @@ class Dispositivo(db.Model):
 
         disp = Dispositivo()
         disp.uid = uid
-        disp.aluno = aluno_id
+        disp.aluno_id = aluno_id
 
         db.session.add(disp)
         db.session.commit()
@@ -535,10 +535,10 @@ class Arduino(db.Model):
 
 class Aula(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    unidade = db.Column(db.Integer, db.ForeignKey('unidade.id'), nullable=False)
-    professor = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
-    sala = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
-    turma = db.Column(db.Integer, db.ForeignKey('turma.id'), nullable=False)
+    unidade_id = db.Column(db.Integer, db.ForeignKey('unidade.id'), nullable=False)
+    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
+    sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
+    turma_id = db.Column(db.Integer, db.ForeignKey('turma.id'), nullable=False)
     presencas = db.relationship('Presenca', backref='aula', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -547,7 +547,7 @@ class Aula(db.Model):
         return '<Aula %r %r>' % (self.id, self.created_at)
 
     def __str__(self):
-        unidade = Unidade.query.get(self.unidade)
+        unidade = Unidade.query.get(self.unidade_id)
         data_formatada = self.created_at.strftime('%d/%m/%Y')
         return '%s em %s' % (unidade.nome, data_formatada)
 
@@ -555,10 +555,10 @@ class Aula(db.Model):
     def create(nome_sala, unidade_id, professor_id, turma_id, data_aula):
         sala = Sala.query.filter_by(nome=nome_sala).first()
         aula = Aula()
-        aula.sala = sala.id
-        aula.unidade = unidade_id
-        aula.professor = professor_id
-        aula.turma = turma_id
+        aula.sala_id = sala.id
+        aula.unidade_id = unidade_id
+        aula.professor_id = professor_id
+        aula.turma_id = turma_id
         aula.created_at = data_aula
 
         db.session.add(aula)
@@ -568,14 +568,14 @@ class Aula(db.Model):
     @staticmethod
     def export(aula_id):
         aula = Aula.query.get(aula_id)
-        data = [[presenca.aluno, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas]
+        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas]
         return data, aula.created_at.strftime('%d/%m/%Y às %H:%M')
 
 
 class Presenca(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    aula = db.Column(db.Integer, db.ForeignKey('aula.id'))
-    aluno = db.Column(db.Integer, db.ForeignKey('aluno.id'))
+    aula_id = db.Column(db.Integer, db.ForeignKey('aula.id'))
+    aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'))
     created_at = db.Column(db.DateTime, server_default=func.now())
 
     def __repr__(self):
@@ -583,7 +583,7 @@ class Presenca(db.Model):
 
     def __str__(self):
         data_formatada = self.created_at.strftime('%d/%m/%Y às %H:%M')
-        return '%s em %s' % (self.aluno, data_formatada)
+        return '%s em %s' % (self.aluno_id, data_formatada)
 
     @staticmethod
     def create(aula, alunos):
@@ -592,8 +592,8 @@ class Presenca(db.Model):
             aluno_selecionado = Aluno.create(aluno["numero"], aula["turma_id"])
 
             nova_presenca = Presenca()
-            nova_presenca.aula = aula["id"]
-            nova_presenca.aluno = aluno_selecionado[1].id
+            nova_presenca.aula_id = aula["id"]
+            nova_presenca.aluno_id = aluno_selecionado[1].id
             nova_presenca.created_at = aluno["timestamp"]
             presencas.append(nova_presenca)
 

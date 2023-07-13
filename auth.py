@@ -42,7 +42,7 @@ def login():
                              'contacte a Secretaria do DEISI.'), 401
 
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    return jsonify(token=login_result[1].generate_session_token(), professor_id=login_result[1].professor, is_admin=login_result[1].is_admin), 200
+    return jsonify(token=login_result[1].generate_session_token(), professor_id=login_result[1].professor_id, is_admin=login_result[1].is_admin), 200
 
 
 @auth.route("/recuperar", methods=["POST"])
