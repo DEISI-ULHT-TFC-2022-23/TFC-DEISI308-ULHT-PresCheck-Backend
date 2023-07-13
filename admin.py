@@ -30,7 +30,7 @@ admin = Blueprint('admin', __name__)
 @admin.route("/admin/utilizadores", methods=["GET"])
 def admin_utilizadores():
     utilizadores = [{"username": user.username,
-                     "is_professor": True if user.professor_id else False,
+                     "is_professor": True if user.professor else False,
                      "is_admin": user.is_admin,
                      "is_active": user.is_active}
                     for user in User.query.filter(User.id != 1).all()]
@@ -46,21 +46,22 @@ def admin_utilizadores_username(username):
     return jsonify(username=user.username,
                    is_active=user.is_active,
                    is_admin=user.is_admin,
-                   is_professor=True if user.professor_id else False,
-                   unidades=user.get_associated_unidades()), 200
+                   is_professor=True if user.professor else False,
+                   unidades=user.get_associated_unidades(),
+                   turmas=user.get_associated_turmas()), 200
 
 
 @admin.route("/admin/utilizadores/criar", methods=["PUT"])
 def admin_utilizadores_criar():
     params = request.get_json()
-    username, is_admin, is_professor, unidades = params["username"], params["admin"], params["professor"], params[
-        "unidades"]
+    username, is_admin, is_professor, unidades, turmas = params["username"], params["admin"], params["professor"], params[
+        "unidades"], params["turmas"]
 
     if not username or unidades is None or is_admin is None or is_professor is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades)
+        user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades, turmas=turmas)
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
@@ -100,7 +101,7 @@ def admin_utilizadores_unidades_associar(username):
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     user = User.verify_user(username=username)
-    if not user or user.professor_id is None:
+    if not user or user.professor is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
 
     user_prof = user.get_professor()
@@ -112,13 +113,108 @@ def admin_utilizadores_unidades_associar(username):
 @admin.route("/admin/utilizadores/<string:username>/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
 def admin_utilizadores_unidades_eliminar(username, unidade_id):
     user = User.verify_user(username=username)
-    if not user or user.professor_id is None:
+    if not user or user.professor is None:
         return jsonify(error="Utilizador não encontrado ou não é professor"), 404
 
     user_prof = user.get_professor()
     user_prof.remove_unidade(unidade_id=unidade_id, commit=True)
 
     return jsonify(message="Unidades associadas com sucesso"), 200
+
+
+@admin.route("/admin/utilizadores/<string:username>/turmas/associar", methods=["POST"])
+def admin_utilizadores_turmas_associar(username):
+    params = request.get_json()
+    turmas = params["turmas"]
+
+    if turmas is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    user = User.verify_user(username=username)
+    if not user or user.professor is None:
+        return jsonify(error="Utilizador não encontrado ou não é professor"), 404
+
+    user_prof = user.get_professor()
+    user_prof.associate_turmas(turmas=turmas, commit=True)
+
+    return jsonify(message="Turmas associadas com sucesso"), 200
+
+
+@admin.route("/admin/utilizadores/<string:username>/turmas/eliminar/<int:turma_id>", methods=["DELETE"])
+def admin_utilizadores_turmas_eliminar(username, turma_id):
+    user = User.verify_user(username=username)
+    if not user or user.professor is None:
+        return jsonify(error="Utilizador não encontrado ou não é professor"), 404
+
+    user_prof = user.get_professor()
+    user_prof.remove_turma(turma_id=turma_id, commit=True)
+
+    return jsonify(message="Turmas associadas com sucesso"), 200
+
+
+@admin.route("/admin/turmas", methods=["GET"])
+def admin_turmas():
+    turmas = [{"id": turma.id, "nome": turma.nome, "ano_letivo": turma.ano_letivo, "alunos": len(turma.alunos)} for turma in Turma.query.all()]
+    return jsonify(turmas=turmas), 200
+
+
+@admin.route("/admin/turmas/<int:turma_id>", methods=["GET"])
+def admin_turmas_id(turma_id):
+    turma = Turma.query.get(turma_id)
+
+    if not turma:
+        return jsonify(error="Turma não encontrada"), 404
+
+    alunos = [aluno.id for aluno in turma.alunos]
+    professores = [f"p{professor.id}" for professor in turma.professores]
+    return jsonify(turma=turma.id, nome=turma.nome, ano_letivo=turma.ano_letivo, professores=professores, alunos=alunos), 200
+
+
+@admin.route("/admin/turmas/criar", methods=["POST"])
+def admin_turmas_criar():
+    params = request.get_json()
+    nome, ano_letivo = params["nome"], params["ano_letivo"]
+
+    if nome is None or ano_letivo is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    turma = Turma.create(nome, ano_letivo)
+    if not turma[0]:
+        return jsonify(error="A turma já existe."), 409
+
+    return jsonify(message="Turma criada com sucesso"), 200
+
+
+@admin.route("/admin/turmas/editar/<int:turma_id>", methods=["PUT"])
+def admin_turmas_editar(turma_id):
+    params = request.get_json()
+    nome, ano_letivo = params["nome"], params["ano_letivo"]
+
+    if nome is None or ano_letivo is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    turma = Turma.query.get(turma_id)
+    if not turma:
+        return jsonify(error="Turma não encontrada"), 404
+
+    update = turma.update(nome=nome, ano_letivo=ano_letivo, commit=True)
+    if not update:
+        return jsonify(error="Uma turma já existe com pelo menos um dos campos alterados."), 409
+
+    return jsonify(message="Turma editada com sucesso"), 200
+
+
+@admin.route("/admin/turmas/eliminar/<int:turma_id>", methods=["DELETE"])
+def admin_turmas_eliminar(turma_id):
+    turma = Turma.query.get(turma_id)
+    if not turma:
+        return jsonify(error="Turma não encontrada"), 404
+
+    deletion = Turma.delete(turma.nome, turma.ano_letivo)
+    if not deletion:
+        return jsonify(error="Não foi possível eliminar a turma."), 409
+
+    return jsonify(message="Turma eliminada com sucesso"), 200
 
 
 @admin.route("/admin/alunos", methods=["GET"])
@@ -173,13 +269,13 @@ def admin_alunos_associar():
 @admin.route("/admin/alunos/criar", methods=["PUT"])
 def admin_alunos_criar():
     params = request.get_json()
-    numero, dispositivo = params["numero"], params["dispositivo"]
-    if not numero:
+    numero, dispositivo, turma = params["numero"], params["dispositivo"], params["turma"]
+    if not numero or not turma:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
         numero = int(numero)
-        aluno = Aluno.create(numero)
+        aluno = Aluno.create(numero, turma)
 
         if aluno[0] is False:
             return jsonify(error="Aluno já existente"), 409
@@ -301,14 +397,18 @@ def admin_salas():
 @admin.route("/admin/salas/criar", methods=["POST"])
 def admin_salas_criar():
     params = request.get_json()
-    nome, arduino_id = params["nome"], params["arduino"]
-    if not nome or not arduino_id:
+    nome, arduino_id, ip_address = params["nome"], params["arduino"], params["ip_address"]
+    if not nome or not arduino_id or not ip_address:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        sala = Sala.create(nome, arduino_id)
+        sala = Sala.create(nome)
         if sala[0] is False:
             return jsonify(error="Sala já existente"), 409
+
+        arduino = Arduino.create(arduino_id, ip_address, sala[1].id)
+        if arduino[0] is False:
+            return jsonify(error="Arduino já existente"), 409
 
         return jsonify(message="Sala criada com sucesso"), 200
     except Exception:

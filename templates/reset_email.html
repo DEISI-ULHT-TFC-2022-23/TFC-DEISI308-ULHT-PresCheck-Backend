@@ -1,6 +1,92 @@
-<p>
-    Olá {{ user }}!
-</p>
-<p>
-    Código: <b>{{ data }}</b>
-</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Recuperação de senha</title>
+    <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #f2f2f2;
+    }
+
+    .container {
+      max-width: 600px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #555;
+      font-size: 16px;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    .token {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        letter-spacing: 5px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    img {
+      display: block;
+      margin-top: 20px;
+      max-width: 200px;
+    }
+
+    .disclaimer {
+      font-size: 12px;
+      color: #888;
+      margin-top: 10px;
+    }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Recuperação de senha</h1>
+    <p>Olá, {{ user }}!</p>
+    <p>Recebemos uma solicitação para redefinir a sua palavra-passe. Se você não fez essa solicitação, pode ignorar este
+        e-mail.</p>
+    <p>Para redefinir a sua palavra-passe, utilize o seguinte token no formulário da nossa plataforma:</p>
+    <p class="token">{{ data }}</p>
+    <p>O token expirará em 10 minutos.</p>
+    <p>Atenciosamente,</p>
+    <p>A equipa ULHT PresCheck</p>
+    <hr>
+    <img src="[URL da sua imagem]" alt="Logo da empresa">
+    <p class="disclaimer">Por favor, não responda a este e-mail. Esta é uma mensagem automática enviada por um sistema
+        não monitorizado.</p>
+</div>
+</body>
+</html>

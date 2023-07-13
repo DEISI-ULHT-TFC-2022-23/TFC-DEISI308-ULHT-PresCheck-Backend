@@ -1,5 +1,4 @@
 import re
-from time import time
 import random
 import string
 
@@ -17,6 +16,11 @@ professor_unidade = db.Table('professor_unidade',
                              db.Column('unidade_id', db.Integer, db.ForeignKey('unidade.id')),
                              db.Column('professor_id', db.Integer, db.ForeignKey('professor.id'))
                              )
+
+professor_turma = db.Table('professor_turma',
+                           db.Column('turma_id', db.Integer, db.ForeignKey('turma.id')),
+                           db.Column('professor_id', db.Integer, db.ForeignKey('professor.id'))
+                           )
 
 
 class Unidade(db.Model):
@@ -56,11 +60,17 @@ class Unidade(db.Model):
             return True
         return False
 
+    @staticmethod
+    def avg_presencas_by_unidade():
+        pass
+        # Unidade.query.
+
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user = db.relationship('User', backref='professor')
     unidades = db.relationship('Unidade', secondary='professor_unidade', backref='professores')
+    turmas = db.relationship('Turma', secondary='professor_turma', backref='professores')
     aulas = db.relationship('Aula', backref='professor')
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -88,13 +98,35 @@ class Professor(db.Model):
         if commit:
             db.session.commit()
 
+    def associate_turmas(self, turmas, commit=False):
+        for turma_id in turmas:
+            turma = Turma.query.get(turma_id)
+            if turma:
+                self.turmas.append(turma)
+
+        if commit:
+            db.session.commit()
+
+    def remove_turma(self, turma_id, commit=False):
+        turma = Turma.query.get(turma_id)
+        if turma:
+            self.turmas.remove(turma)
+
+        if commit:
+            db.session.commit()
+
     @staticmethod
     def get_unidades(professor_id):
         prof = Professor.query.get(professor_id)
         return [{'id': unidade.id, 'codigo': unidade.codigo, 'nome': unidade.nome} for unidade in prof.unidades] or []
 
     @staticmethod
-    def create(professor_id, unidades):
+    def get_turmas(professor_id):
+        prof = Professor.query.get(professor_id)
+        return [{'id': turma.id, 'nome': turma.nome, 'ano_letivo': turma.ano_letivo, 'alunos': [aluno.id for aluno in turma.alunos]} for turma in prof.turmas] or []
+
+    @staticmethod
+    def create(professor_id, unidades, turmas):
         prof_exists = Professor.query.get(professor_id)
 
         if prof_exists:
@@ -103,6 +135,7 @@ class Professor(db.Model):
         prof = Professor()
         prof.id = professor_id
         prof.associate_unidades(unidades)
+        prof.associate_turmas(turmas)
 
         db.session.add(prof)
         db.session.commit()
@@ -115,7 +148,8 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
     is_admin = db.Column(db.Boolean(), nullable=False)
     is_active = db.Column(db.Boolean(), nullable=False)
-    professor_id = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True)
+    reset_token = db.Column(db.Integer, nullable=True)
+    professor = db.Column(db.Integer, db.ForeignKey("professor.id"), nullable=True)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -131,7 +165,7 @@ class User(db.Model):
         except NoResultFound:
             return False
 
-        self.professor_id = professor_id
+        self.professor = professor_id
 
         if commit:
             db.session.commit()
@@ -147,17 +181,17 @@ class User(db.Model):
     def verify_password(self, password):
         return check_password_hash(self.password, password)
 
-    def get_reset_token(self):
-        from app import Configuration
-        return jwt.encode(payload={'user': self.username,
-                                   'exp': time() + 5 * 60},
-                          key=Configuration.SECRET_KEY)
-
     def get_associated_unidades(self):
-        if not self.professor_id:
+        if not self.professor:
             return []
 
-        return Professor.get_unidades(self.professor_id)
+        return Professor.get_unidades(self.professor)
+
+    def get_associated_turmas(self):
+        if not self.professor:
+            return []
+
+        return Professor.get_turmas(self.professor)
 
     def update(self, is_admin, is_active, commit=False):
         self.is_admin = is_admin
@@ -167,19 +201,7 @@ class User(db.Model):
             db.session.commit()
 
     def get_professor(self):
-        return Professor.query.get(self.professor_id)
-
-    @staticmethod
-    def verify_reset_token(token):
-        try:
-            from app import Configuration
-            data = jwt.decode(token, key=Configuration.SECRET_KEY, algorithms=['HS256', ])
-            username = data['user']
-            if time() > data['exp']:
-                raise Exception
-        except Exception:
-            return None
-        return User.query.filter_by(username=username).first()
+        return Professor.query.get(self.professor)
 
     def generate_session_token(self):
         from app import Configuration
@@ -188,6 +210,12 @@ class User(db.Model):
                                    'admin': self.is_admin},
                           key=Configuration.SECRET_KEY,
                           algorithm='HS256')
+
+    def generate_reset_token(self):
+        token = ''.join(str(random.randint(0, 9)) for _ in range(6))
+        self.reset_token = token
+        db.session.commit()
+        return token
 
     @staticmethod
     def verify_session_token(token):
@@ -202,9 +230,22 @@ class User(db.Model):
         return data
 
     @staticmethod
-    def create(username, user_id=None, is_admin=False, is_professor=False, unidades=None, password=None):
+    def verify_reset_token(username, token):
+        user = User.query.filter_by(username=username, token=token).first()
+        if user:
+            user.reset_token = None
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def create(username, user_id=None, is_admin=False, is_professor=False, unidades=None, turmas=None, password=None):
         if unidades is None:
             unidades = []
+
+        if turmas is None:
+            turmas = []
+
         user_exists = User.verify_user(username)
         if user_exists:
             return False, user_exists
@@ -220,7 +261,7 @@ class User(db.Model):
 
         if is_professor:
             professor_id = re.findall(r'\d+', username)[0]
-            Professor.create(professor_id, unidades)
+            Professor.create(professor_id, unidades, turmas)
             user.associate_prof(professor_id)
 
         db.session.add(user)
@@ -243,8 +284,81 @@ class User(db.Model):
         return User.query.filter_by(username=username).first()
 
 
+class Turma(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nome = db.Column(db.String(20), primary_key=True)
+    ano_letivo = db.Column(db.Integer, primary_key=True)
+    alunos = db.relationship('Aluno', backref='turma', cascade="all,delete")
+    professores = db.relationship('Professor', secondary="professor_turma", backref='turmas')
+    aulas = db.relationship('Aula', backref='turma', cascade="all,delete")
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
+
+    def __repr__(self):
+        return '<Turma %r>' % self.id
+
+    def __str__(self):
+        return self.nome
+
+    def update(self, nome, ano_letivo, commit=False):
+
+        if nome != self.nome:
+            turma_exists = Turma.query.filter_by(nome=nome).first()
+            if turma_exists:
+                return False
+            self.nome = nome
+
+        if ano_letivo != self.ano_letivo:
+            turma_exists = Turma.query.filter_by(ano_letivo=ano_letivo).first()
+            if turma_exists:
+                return False
+            self.ano_letivo = ano_letivo
+
+        if commit:
+            db.session.commit()
+
+        return True
+
+    @staticmethod
+    def get_turma(nome, ano_letivo):
+        return Turma.query.filter_by(nome=nome, ano_letivo=ano_letivo).first()
+
+    @staticmethod
+    def get_turmas(professor_id):
+        return Turma.query.filter(Turma.professores.any(id=professor_id)).all()
+
+    @staticmethod
+    def create(nome, ano_letivo, professores=None):
+        turma_exists = Turma.query.filter_by(nome=nome, ano_letivo=ano_letivo).first()
+        if turma_exists:
+            return False, turma_exists
+
+        if professores is None:
+            professores = []
+        turma = Turma()
+        turma.nome = nome
+        turma.ano_letivo = ano_letivo
+
+        for professor in professores:
+            turma.professores.append(professor)
+
+        db.session.add(turma)
+        db.session.commit()
+        return True, turma
+
+    @staticmethod
+    def delete(nome, ano_letivo):
+        turma = Turma.query.filter_by(nome=nome, ano_letivo=ano_letivo).first()
+        if turma:
+            db.session.delete(turma)
+            db.session.commit()
+            return True
+        return False
+
+
 class Aluno(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    turma = db.Column(db.Integer, db.ForeignKey("turma.id"), nullable=False)
     presencas = db.relationship('Presenca', backref='aluno', cascade="all,delete")
     dispositivos = db.relationship('Dispositivo', backref='aluno', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
@@ -257,17 +371,19 @@ class Aluno(db.Model):
         return self.id
 
     def get_last_classes(self, n=5):
-        presencas = Presenca.query.filter_by(aluno_id=self.id).join(Aula).join(Unidade).order_by(Presenca.created_at.desc()).limit(n).all()
+        presencas = Presenca.query.filter_by(aluno_id=self.id).join(Aula).join(Unidade).order_by(
+            Presenca.created_at.desc()).limit(n).all()
         return [{"unidade": presenca.aula.unidade.nome, "presenca": presenca.created_at} for presenca in presencas]
 
     @staticmethod
-    def create(aluno_id):
+    def create(aluno_id, turma_id):
         aluno_exists = Aluno.query.get(aluno_id)
         if aluno_exists:
             return False, aluno_exists
 
         aluno = Aluno()
         aluno.id = aluno_id
+        aluno.turma_id = turma_id
 
         db.session.add(aluno)
         db.session.commit()
@@ -291,7 +407,7 @@ class Aluno(db.Model):
 class Dispositivo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uid = db.Column(db.String(100), unique=True, nullable=False)
-    aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
+    aluno = db.Column(db.Integer, db.ForeignKey('aluno.id'), nullable=False)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
 
@@ -299,7 +415,7 @@ class Dispositivo(db.Model):
         return '<Dispositivo %r>' % self.id
 
     def __str__(self):
-        return '%s (de: %s)' % (self.uid, self.aluno_id)
+        return '%s (de: %s)' % (self.uid, self.aluno)
 
     @staticmethod
     def create(uid, aluno_id):
@@ -313,7 +429,7 @@ class Dispositivo(db.Model):
 
         disp = Dispositivo()
         disp.uid = uid
-        disp.aluno_id = aluno_id
+        disp.aluno = aluno_id
 
         db.session.add(disp)
         db.session.commit()
@@ -325,7 +441,7 @@ class Dispositivo(db.Model):
         if not aluno:
             return False
 
-        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id).filter_by(uid=uid).all()
+        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id, uid=uid).all()
         if not dispositivo:
             return False
 
@@ -337,7 +453,7 @@ class Dispositivo(db.Model):
 class Sala(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(7), nullable=False, unique=True)
-    arduino_id = db.Column(db.String(100), nullable=False, unique=True)
+    arduino = db.relationship('Arduino', back_populates='sala', uselist=False, cascade="save-update, none")
     aulas = db.relationship('Aula', backref='sala', cascade="save-update, none")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -349,16 +465,14 @@ class Sala(db.Model):
         return self.nome
 
     @staticmethod
-    def create(nome, arduino_id):
+    def create(nome):
         sala_exists = Sala.query.filter_by(nome=nome).first()
-        uid_exists = Sala.query.filter_by(arduino_id=arduino_id).first()
 
-        if sala_exists or uid_exists:
+        if sala_exists:
             return False, sala_exists
 
         sala = Sala()
         sala.nome = nome
-        sala.arduino_id = arduino_id
 
         db.session.add(sala)
         db.session.commit()
@@ -373,16 +487,67 @@ class Sala(db.Model):
             return True
         return False
 
+
+class Arduino(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uid = db.Column(db.String(100), nullable=False, unique=True)
+    ip_address = db.Column(db.String(100), nullable=False, unique=True)
+    sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
+    sala = db.relationship("Sala", back_populates="arduino", uselist=False)
+
+    def __repr__(self):
+        return '<Arduino %r>' % self.id
+
+    def __str__(self):
+        return '%s (de: %s)' % (self.uid, self.sala)
+
     @staticmethod
-    def get_sala_by_arduino(arduino_id):
-        return Sala.query.filter_by(arduino_id=arduino_id).all()
+    def create(uid, ip_address, sala_id):
+        sala_exists = Sala.query.get(sala_id)
+        if not sala_exists:
+            return False, sala_exists
+
+        uid_exists = Arduino.query.filter_by(uid=uid).all()
+        if uid_exists:
+            return False, uid_exists
+
+        arduino = Arduino()
+        arduino.uid = uid
+        arduino.ip_address = ip_address
+        arduino.sala_id = sala_id
+
+        db.session.add(arduino)
+        db.session.commit()
+        return True, arduino
+
+    @staticmethod
+    def delete(arduino_id):
+        arduino = Arduino.query.get(arduino_id)
+        if arduino:
+            db.session.delete(arduino)
+            db.session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def get_arduino_by_sala(sala_id):
+        return Arduino.query.filter_by(sala_id=sala_id).all()
+
+    @staticmethod
+    def get_arduino_by_uid(uid):
+        return Arduino.query.filter_by(uid=uid).first()
+
+    @staticmethod
+    def get_arduino_by_ip(ip_address):
+        return Arduino.query.filter_by(ip_address=ip_address).first()
 
 
 class Aula(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    unidade_id = db.Column(db.Integer, db.ForeignKey('unidade.id'), nullable=False)
-    professor_id = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
-    sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
+    unidade = db.Column(db.Integer, db.ForeignKey('unidade.id'), nullable=False)
+    professor = db.Column(db.Integer, db.ForeignKey('professor.id'), nullable=False)
+    sala = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
+    turma = db.Column(db.Integer, db.ForeignKey('turma.id'), nullable=False)
     presencas = db.relationship('Presenca', backref='aula', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -391,17 +556,18 @@ class Aula(db.Model):
         return '<Aula %r %r>' % (self.id, self.created_at)
 
     def __str__(self):
-        unidade = Unidade.query.get(self.unidade_id)
+        unidade = Unidade.query.get(self.unidade)
         data_formatada = self.created_at.strftime('%d/%m/%Y')
         return '%s em %s' % (unidade.nome, data_formatada)
 
     @staticmethod
-    def create(nome_sala, unidade_id, professor_id, data_aula):
+    def create(nome_sala, unidade_id, professor_id, turma_id, data_aula):
         sala = Sala.query.filter_by(nome=nome_sala).first()
         aula = Aula()
-        aula.sala_id = sala.id
-        aula.unidade_id = unidade_id
-        aula.professor_id = professor_id
+        aula.sala = sala.id
+        aula.unidade = unidade_id
+        aula.professor = professor_id
+        aula.turma = turma_id
         aula.created_at = data_aula
 
         db.session.add(aula)
@@ -411,14 +577,14 @@ class Aula(db.Model):
     @staticmethod
     def export(aula_id):
         aula = Aula.query.get(aula_id)
-        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas]
+        data = [[presenca.aluno, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas]
         return data, aula.created_at.strftime('%d/%m/%Y às %H:%M')
 
 
 class Presenca(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    aula_id = db.Column(db.Integer, db.ForeignKey('aula.id'))
-    aluno_id = db.Column(db.Integer, db.ForeignKey('aluno.id'))
+    aula = db.Column(db.Integer, db.ForeignKey('aula.id'))
+    aluno = db.Column(db.Integer, db.ForeignKey('aluno.id'))
     created_at = db.Column(db.DateTime, server_default=func.now())
 
     def __repr__(self):
@@ -426,17 +592,17 @@ class Presenca(db.Model):
 
     def __str__(self):
         data_formatada = self.created_at.strftime('%d/%m/%Y às %H:%M')
-        return '%s em %s' % (self.aluno_id, data_formatada)
+        return '%s em %s' % (self.aluno, data_formatada)
 
     @staticmethod
-    def create(aula_id, alunos):
+    def create(aula, alunos):
         presencas = []
         for aluno in alunos:
-            aluno_selecionado = Aluno.create(aluno["numero"])
+            aluno_selecionado = Aluno.create(aluno["numero"], aula["turma_id"])
 
             nova_presenca = Presenca()
-            nova_presenca.aula_id = aula_id
-            nova_presenca.aluno_id = aluno_selecionado[1].id
+            nova_presenca.aula = aula["id"]
+            nova_presenca.aluno = aluno_selecionado[1].id
             nova_presenca.created_at = aluno["timestamp"]
             presencas.append(nova_presenca)
 

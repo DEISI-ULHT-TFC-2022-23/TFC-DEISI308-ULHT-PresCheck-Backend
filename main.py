@@ -152,7 +152,7 @@ def controlar_aula():
 
             # Remove a sala em andamento da lista de aulas em andamento e retorna o código a informar que foi processado
             del aulas_a_decorrer[sala_param]
-            return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 204
+            return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200
 
     # Retorna o estado da aula atualizado
     return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
@@ -185,7 +185,10 @@ def get_presencas():
     sala_selecionada = aulas_a_decorrer[request.args.get('sala')]
 
     # Retorna a lista de alunos da sala como resposta com código de status 200 (OK)
-    return jsonify(alunos=sala_selecionada['alunos']), 200
+    return jsonify(alunos=[{
+        "numero": aluno["numero"],
+        "timestamp": aluno["timestamp"].strftime("%d/%m/%Y %H:%M")
+    } for aluno in sala_selecionada['alunos']]), 200
 
 
 @main.route("/presencas/arduino", methods=["PUT"])
@@ -226,7 +229,7 @@ def arduino_presenca():
     # Adiciona o número do aluno à lista de presenças,
     # avisa que existem alunos novos na lista e retorna uma resposta JSON com o código 200 OK
     sala_selecionada['alunos'].append({"numero": aluno.id, "timestamp": datetime.datetime.now()})
-    return jsonify(message="Marcação da presença efetuada com sucesso."), 201
+    return jsonify(message="Marcação da presença efetuada com sucesso."), 200
 
 
 @main.route("/presencas/marcar", methods=["PUT"])
@@ -252,12 +255,12 @@ def marcar_presenca():
 
     # Verifica se o aluno inserido já consta na lista de alunos da aula a decorrer
     if any(aluno["numero"] == num_aluno for aluno in sala_selecionada['alunos']):
-        return jsonify(error="Este aluno já tem a sua presença registada."), 304
+        return jsonify(error="Este aluno já tem a sua presença registada."), 409
 
     # Adiciona o número do aluno à lista de presenças,
     # altera a flag para informar que existem alunos novos na lista e retorna uma mensagem de sucesso.
     sala_selecionada['alunos'].append({"numero": num_aluno, "timestamp": datetime.datetime.now()})
-    return jsonify(message="Marcação da presença efetuada com sucesso."), 201
+    return jsonify(message="Marcação da presença efetuada com sucesso."), 200
 
 
 @main.route("/presencas/eliminar", methods=["POST"])

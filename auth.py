@@ -42,7 +42,7 @@ def login():
                              'contacte a Secretaria do DEISI.'), 401
 
     # Retorna JSON de sucesso após o ‘login’ bem-sucedido
-    return jsonify(token=login_result[1].generate_session_token(), professor_id=login_result[1].professor_id, is_admin=login_result[1].is_admin), 200
+    return jsonify(token=login_result[1].generate_session_token(), professor_id=login_result[1].professor, is_admin=login_result[1].is_admin), 200
 
 
 @auth.route("/recuperar", methods=["POST"])
@@ -67,7 +67,7 @@ def recuperar_senha():
     # Envia o email para o utilizador numa thread à parte
     Thread(target=send_email, args=(
         user.username,
-        user.get_reset_token(),
+        user.generate_reset_token(),
         "ULHT PresCheck - Recuperação",
         "reset_email.html",)).start()
 
@@ -90,7 +90,7 @@ def recuperar_senha_alterar():
     user = User.verify_user(username)
 
     # Verifica se o utilizador existe na base de dados e o token está correto
-    if not user or not user.verify_reset_token(token):
+    if not user or not user.verify_reset_token(username, token):
         # Retorna JSON do erro
         return jsonify(error='O utilizador ou o token são inválidos. Tente novamente.'), 404
 
