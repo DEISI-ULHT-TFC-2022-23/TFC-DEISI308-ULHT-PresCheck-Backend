@@ -154,7 +154,7 @@ def admin_utilizadores_turmas_eliminar(username, turma_id):
 
 @admin.route("/admin/turmas", methods=["GET"])
 def admin_turmas():
-    turmas = [{"id": turma.id, "nome": turma.nome, "ano_letivo": turma.ano_letivo, "alunos": len(turma.alunos)} for turma in Turma.query.all()]
+    turmas = [{"id": turma.id, "nome": turma.nome, "alunos": len(turma.alunos)} for turma in Turma.query.all()]
     return jsonify(turmas=turmas), 200
 
 
@@ -167,18 +167,18 @@ def admin_turmas_id(turma_id):
 
     alunos = [aluno.id for aluno in turma.alunos]
     professores = [f"p{professor.id}" for professor in turma.professores]
-    return jsonify(turma=turma.id, nome=turma.nome, ano_letivo=turma.ano_letivo, professores=professores, alunos=alunos), 200
+    return jsonify(turma=turma.id, nome=turma.nome, professores=professores, alunos=alunos), 200
 
 
 @admin.route("/admin/turmas/criar", methods=["POST"])
 def admin_turmas_criar():
     params = request.get_json()
-    nome, ano_letivo = params["nome"], params["ano_letivo"]
+    nome = params["nome"]
 
-    if nome is None or ano_letivo is None:
+    if nome is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    turma = Turma.create(nome, ano_letivo)
+    turma = Turma.create(nome)
     if not turma[0]:
         return jsonify(error="A turma já existe."), 409
 
@@ -188,16 +188,16 @@ def admin_turmas_criar():
 @admin.route("/admin/turmas/editar/<int:turma_id>", methods=["PUT"])
 def admin_turmas_editar(turma_id):
     params = request.get_json()
-    nome, ano_letivo = params["nome"], params["ano_letivo"]
+    nome = params["nome"]
 
-    if nome is None or ano_letivo is None:
+    if nome is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     turma = Turma.query.get(turma_id)
     if not turma:
         return jsonify(error="Turma não encontrada"), 404
 
-    update = turma.update(nome=nome, ano_letivo=ano_letivo, commit=True)
+    update = turma.update(nome=nome, commit=True)
     if not update:
         return jsonify(error="Uma turma já existe com pelo menos um dos campos alterados."), 409
 
@@ -206,11 +206,7 @@ def admin_turmas_editar(turma_id):
 
 @admin.route("/admin/turmas/eliminar/<int:turma_id>", methods=["DELETE"])
 def admin_turmas_eliminar(turma_id):
-    turma = Turma.query.get(turma_id)
-    if not turma:
-        return jsonify(error="Turma não encontrada"), 404
-
-    deletion = Turma.delete(turma.nome, turma.ano_letivo)
+    deletion = Turma.delete(turma_id)
     if not deletion:
         return jsonify(error="Não foi possível eliminar a turma."), 409
 

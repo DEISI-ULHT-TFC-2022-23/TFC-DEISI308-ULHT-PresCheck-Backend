@@ -123,7 +123,7 @@ class Professor(db.Model):
     @staticmethod
     def get_turmas(professor_id):
         prof = Professor.query.get(professor_id)
-        return [{'id': turma.id, 'nome': turma.nome, 'ano_letivo': turma.ano_letivo, 'alunos': [aluno.id for aluno in turma.alunos]} for turma in prof.turmas] or []
+        return [{'id': turma.id, 'nome': turma.nome, 'alunos': [aluno.id for aluno in turma.alunos]} for turma in prof.turmas] or []
 
     @staticmethod
     def create(professor_id, unidades, turmas):
@@ -286,8 +286,7 @@ class User(db.Model):
 
 class Turma(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nome = db.Column(db.String(20), primary_key=True)
-    ano_letivo = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(20), unique=True, nullable=False)
     alunos = db.relationship('Aluno', backref='turma', cascade="all,delete")
     professores = db.relationship('Professor', secondary="professor_turma", backref='turmas')
     aulas = db.relationship('Aula', backref='turma', cascade="all,delete")
@@ -300,7 +299,7 @@ class Turma(db.Model):
     def __str__(self):
         return self.nome
 
-    def update(self, nome, ano_letivo, commit=False):
+    def update(self, nome, commit=False):
 
         if nome != self.nome:
             turma_exists = Turma.query.filter_by(nome=nome).first()
@@ -308,52 +307,41 @@ class Turma(db.Model):
                 return False
             self.nome = nome
 
-        if ano_letivo != self.ano_letivo:
-            turma_exists = Turma.query.filter_by(ano_letivo=ano_letivo).first()
-            if turma_exists:
-                return False
-            self.ano_letivo = ano_letivo
-
         if commit:
             db.session.commit()
 
         return True
 
     @staticmethod
-    def get_turma(nome, ano_letivo):
-        return Turma.query.filter_by(nome=nome, ano_letivo=ano_letivo).first()
+    def get_turma(nome):
+        return Turma.query.filter_by(nome=nome).first()
 
     @staticmethod
     def get_turmas(professor_id):
         return Turma.query.filter(Turma.professores.any(id=professor_id)).all()
 
     @staticmethod
-    def create(nome, ano_letivo, professores=None):
-        turma_exists = Turma.query.filter_by(nome=nome, ano_letivo=ano_letivo).first()
+    def create(nome):
+        turma_exists = Turma.query.filter_by(nome=nome).first()
         if turma_exists:
             return False, turma_exists
 
-        if professores is None:
-            professores = []
         turma = Turma()
         turma.nome = nome
-        turma.ano_letivo = ano_letivo
-
-        for professor in professores:
-            turma.professores.append(professor)
 
         db.session.add(turma)
         db.session.commit()
         return True, turma
 
     @staticmethod
-    def delete(nome, ano_letivo):
-        turma = Turma.query.filter_by(nome=nome, ano_letivo=ano_letivo).first()
-        if turma:
-            db.session.delete(turma)
-            db.session.commit()
-            return True
-        return False
+    def delete(turma_id):
+        turma = Turma.query.get(turma_id)
+        if not turma:
+            return False
+
+        db.session.delete(turma)
+        db.session.commit()
+        return True
 
 
 class Aluno(db.Model):
