@@ -54,14 +54,16 @@ def admin_utilizadores_username(username):
 @admin.route("/admin/utilizadores/criar", methods=["PUT"])
 def admin_utilizadores_criar():
     params = request.get_json()
-    username, is_admin, is_professor, unidades, turmas = params["username"], params["admin"], params["professor"], params[
+    username, is_admin, is_professor, unidades, turmas = params["username"], params["admin"], params["professor"], \
+    params[
         "unidades"], params["turmas"]
 
     if not username or unidades is None or is_admin is None or is_professor is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades, turmas=turmas)
+        user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades,
+                           turmas=turmas)
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
@@ -215,7 +217,8 @@ def admin_turmas_eliminar(turma_id):
 
 @admin.route("/admin/alunos", methods=["GET"])
 def admin_alunos():
-    alunos = [{"numero": aluno.id, "dispositivos": len(aluno.dispositivos)} for aluno in Aluno.query.all()]
+    alunos = [{"numero": aluno.id, "turma": aluno.get_turma_name(), "dispositivos": len(aluno.dispositivos)}
+              for aluno in Aluno.query.all()]
     alunos = sorted(alunos, key=lambda k: k['numero'])
     return jsonify(alunos=alunos), 200
 
@@ -231,7 +234,7 @@ def admin_alunos_id(aluno_id):
                     aluno.dispositivos]
 
     ultimas_presencas = aluno.get_last_classes()
-    return jsonify(aluno=aluno.id, dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
+    return jsonify(aluno=aluno.id, turma=aluno.get_turma_name(), dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
 
 
 @admin.route("/admin/alunos/associar", methods=["POST"])

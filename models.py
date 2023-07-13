@@ -363,6 +363,9 @@ class Aluno(db.Model):
             Presenca.created_at.desc()).limit(n).all()
         return [{"unidade": presenca.aula.unidade.nome, "presenca": presenca.created_at} for presenca in presencas]
 
+    def get_turma_name(self):
+        return Turma.query.get(self.turma).nome
+
     @staticmethod
     def create(aluno_id, turma_id):
         aluno_exists = Aluno.query.get(aluno_id)
