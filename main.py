@@ -12,6 +12,7 @@ Formato:
         estado: STOP/GO,
         unidade_id: (ID da unidade),
         professor_id: (ID do professor),
+        turma_id: (ID da turma),
         inicio: (Timestamp de início da aula),
         alunos : [
             {
@@ -76,10 +77,10 @@ def get_aulas():
 def iniciar_aula():
     # Obtém os dados JSON da solicitação POST
     params = request.get_json()
-    sala_a_abrir, professor_id, unidade_id = params['sala'], params['professor_id'], params['unidade_id']
+    sala_a_abrir, professor_id, unidade_id, turma_id = params['sala'], params['professor_id'], params['unidade_id'], params['turma_id']
 
     # Verifica se os dados JSON obtidos são inválidos
-    if not sala_a_abrir or not professor_id or not unidade_id:
+    if not sala_a_abrir or not professor_id or not unidade_id or not turma_id:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
@@ -101,6 +102,7 @@ def iniciar_aula():
         'estado': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
+        'turma_id': turma_id,
         'inicio': datetime.datetime.now(),
         'alunos': []
     }
@@ -145,6 +147,7 @@ def controlar_aula():
             nova_aula = Aula.create(sala_param,
                                     dados_sala['unidade_id'],
                                     dados_sala['professor_id'],
+                                    dados_sala['turma_id'],
                                     dados_sala['inicio'])
 
             # Cria as presenças na base de dados associadas à aula
