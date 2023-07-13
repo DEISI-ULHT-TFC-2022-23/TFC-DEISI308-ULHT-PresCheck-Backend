@@ -288,7 +288,6 @@ class Turma(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     nome = db.Column(db.String(20), unique=True, nullable=False)
     alunos = db.relationship('Aluno', backref='turma', cascade="all,delete")
-    professores = db.relationship('Professor', secondary="professor_turma", backref='turmas')
     aulas = db.relationship('Aula', backref='turma', cascade="all,delete")
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())
@@ -315,10 +314,6 @@ class Turma(db.Model):
     @staticmethod
     def get_turma(nome):
         return Turma.query.filter_by(nome=nome).first()
-
-    @staticmethod
-    def get_turmas(professor_id):
-        return Turma.query.filter(Turma.professores.any(id=professor_id)).all()
 
     @staticmethod
     def create(nome):
