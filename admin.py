@@ -166,7 +166,7 @@ def admin_turmas_id(turma_id):
 
     alunos = [aluno.id for aluno in turma.alunos]
     professores = [f"p{professor.id}" for professor in turma.professores]
-    return jsonify(turma=turma.id, nome=turma.nome, professores=professores, alunos=alunos), 200
+    return jsonify(id=turma.id, nome=turma.nome, professores=professores, alunos=alunos), 200
 
 
 @admin.route("/admin/turmas/criar", methods=["POST"])
