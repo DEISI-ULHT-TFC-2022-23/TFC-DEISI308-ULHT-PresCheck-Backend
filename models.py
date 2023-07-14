@@ -63,7 +63,6 @@ class Unidade(db.Model):
     @staticmethod
     def avg_presencas_by_unidade():
         pass
-        # Unidade.query.
 
 
 class Professor(db.Model):
@@ -128,7 +127,6 @@ class Professor(db.Model):
     @staticmethod
     def create(professor_id, unidades, turmas):
         prof_exists = Professor.query.get(professor_id)
-
         if prof_exists:
             return False, prof_exists
 
@@ -270,9 +268,7 @@ class User(db.Model):
 
     @staticmethod
     def login_user(username, password):
-
         user = User.query.filter_by(username=username).first()
-
         if user:
             if user.verify_password(password) and user.is_active:
                 return True, user
@@ -299,7 +295,6 @@ class Turma(db.Model):
         return self.nome
 
     def update(self, nome, commit=False):
-
         if nome != self.nome:
             turma_exists = Turma.query.filter_by(nome=nome).first()
             if turma_exists:
@@ -468,7 +463,6 @@ class Sala(db.Model):
     @staticmethod
     def create(nome):
         sala_exists = Sala.query.filter_by(nome=nome).first()
-
         if sala_exists:
             return False, sala_exists
 
@@ -535,7 +529,7 @@ class Arduino(db.Model):
         if tipo == 'nome':
             return Arduino.query.join(Sala).filter(Sala.nome == sala).first()
         elif tipo == 'id':
-            return Arduino.query.filter_by(sala_id=sala).first()
+            return Arduino.query.join(Sala).filter(Sala.id == sala).first()
 
     @staticmethod
     def get_arduino_by_uid(uid):

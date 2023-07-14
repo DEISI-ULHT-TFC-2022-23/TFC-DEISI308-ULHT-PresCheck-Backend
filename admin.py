@@ -59,7 +59,7 @@ def admin_utilizadores_criar():
     try:
         user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades,
                            turmas=turmas)
-        if user[0] is False:
+        if not user[0]:
             return jsonify(error="O utilizador já existe."), 409
 
         from threading import Thread
@@ -161,7 +161,7 @@ def admin_turmas():
 def admin_turmas_id(turma_id):
     turma = Turma.query.get(turma_id)
 
-    if not turma:
+    if turma is None:
         return jsonify(error="Turma não encontrada"), 404
 
     alunos = [aluno.id for aluno in turma.alunos]
@@ -174,7 +174,7 @@ def admin_turmas_criar():
     params = request.get_json()
     nome = params["nome"]
 
-    if nome is None:
+    if not nome:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     turma = Turma.create(nome)
@@ -189,7 +189,7 @@ def admin_turmas_editar(turma_id):
     params = request.get_json()
     nome = params["nome"]
 
-    if nome is None:
+    if not nome:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     turma = Turma.query.get(turma_id)
@@ -239,7 +239,7 @@ def admin_alunos_associar():
     params = request.get_json()
     sala = params["sala"]
 
-    if sala is None:
+    if not sala:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     arduino = Arduino.get_arduino_by_sala("nome", sala)
@@ -267,10 +267,10 @@ def admin_alunos_criar():
         numero = int(numero)
         aluno = Aluno.create(numero, turma)
 
-        if aluno[0] is False:
+        if not aluno[0]:
             return jsonify(error="Aluno já existente"), 409
 
-        if dispositivo is not None:
+        if dispositivo:
             Dispositivo.create(dispositivo, aluno[1].id)
 
         return jsonify(message="Aluno criado com sucesso"), 200
@@ -306,7 +306,7 @@ def admin_alunos_eliminar(aluno_id):
     try:
         deletion = Aluno.delete(aluno_id)
 
-        if deletion is False:
+        if not deletion:
             return jsonify(error="Aluno não encontrado"), 404
 
         return jsonify(), 200
@@ -324,7 +324,7 @@ def admin_dispositivo_criar():
     try:
         number = int(aluno_id)
         creation = Dispositivo.create(dispositivo, number)
-        if creation[0] is False:
+        if not creation[0]:
             return jsonify(error="Dispositivo já existente"), 409
 
         return jsonify(), 200
@@ -337,7 +337,7 @@ def admin_dispositivo_eliminar(aluno_id, uid):
     try:
         deletion = Dispositivo.delete(aluno_id, uid)
 
-        if deletion is False:
+        if not deletion:
             return jsonify(error="Não foi possível eliminar o dispositivo."), 404
 
         return jsonify(), 200
@@ -374,7 +374,7 @@ def admin_unidades_criar():
 
     try:
         unidade = Unidade.create(codigo, nome)
-        if unidade[0] is False:
+        if not unidade[0]:
             return jsonify(error="Unidade já existente"), 409
 
         return jsonify(message="Unidade criada com sucesso"), 200
@@ -386,8 +386,7 @@ def admin_unidades_criar():
 def admin_unidades_eliminar(unidade_id):
     try:
         unidade = Unidade.delete(unidade_id)
-
-        if unidade is False:
+        if not unidade:
             return jsonify(error="Unidade não encontrada"), 404
 
         return jsonify(), 200
@@ -410,11 +409,11 @@ def admin_salas_criar():
 
     try:
         sala = Sala.create(nome)
-        if sala[0] is False:
+        if not sala[0]:
             return jsonify(error="Sala já existente"), 409
 
         arduino = Arduino.create(arduino_id, ip_address, sala[1].id)
-        if arduino[0] is False:
+        if not arduino[0]:
             return jsonify(error="Arduino já existente"), 409
 
         return jsonify(message="Sala criada com sucesso"), 200
@@ -426,12 +425,12 @@ def admin_salas_criar():
 def admin_salas_eliminar(sala_id):
     try:
         sala = Sala.delete(sala_id)
-
-        if sala is False:
+        if not sala:
             return jsonify(error="Sala não encontrada"), 404
 
-        arduino = Arduino.get_arduino_by_sala(sala_id)
-        Arduino.delete(arduino.id)
+        arduino = Arduino.delete(Arduino.get_arduino_by_sala("id", sala_id).id)
+        if not arduino:
+            return jsonify(error="Arduino não encontrado"), 404
 
         return jsonify(), 200
     except Exception:
@@ -445,8 +444,9 @@ def admin_aulas(tipo):
             # Todas as aulas
             return jsonify(aulas=[{
                 "id": aula.id,
-                "unidade": aula.unidade_id.nome,
-                "sala": aula.sala_id.nome,
+                "unidade": aula.unidade.nome,
+                "sala": aula.sala.nome,
+                "turma": aula.turma.nome,
                 "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
             } for aula in Aula.query.all()]), 200
 
@@ -457,7 +457,8 @@ def admin_aulas(tipo):
                 "sala": sala,
                 "estado": dados["estado"],
                 "inicio": dados["inicio"].strftime("%d/%m/%Y %H:%M"),
-                "unidade": Unidade.query.filter_by(id=dados["unidade_id"]).first().nome,
+                "unidade": Unidade.query.get(dados["unidade_id"]).nome,
+                "turma": Turma.query.get(dados["turma_id"]).nome,
             } for sala, dados in aulas_a_decorrer.items()]), 200
 
         case _:
@@ -476,16 +477,17 @@ def admin_aulas_detalhes(tipo, aula):
             return jsonify(aula={
                 "id": aula.id,
                 "unidade": {
-                    "codigo": aula.unidade_id.codigo,
-                    "nome": aula.unidade_id.nome
+                    "codigo": aula.unidade.codigo,
+                    "nome": aula.unidade.nome
                 },
-                "sala": aula.sala_id.nome,
-                "professor": f"p{aula.professor_id.id}",
+                "sala": aula.sala.nome,
+                "professor": f"p{aula.professor.id}",
+                "turma": aula.turma.nome,
                 "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
                 "presencas": [{
-                    "aluno": presenca.aluno_id.id,
+                    "aluno": presenca.aluno.id,
                     "presenca": presenca.created_at.strftime("%d/%m/%Y %H:%M")
-                } for presenca in Presenca.query.filter_by(aula_id=aula.id).all()],
+                } for presenca in aula.presencas],
             }), 200
 
         case "ativas":
@@ -506,6 +508,7 @@ def admin_aulas_detalhes(tipo, aula):
                     "nome": unidade.nome
                 },
                 "professor": f"p{Professor.query.get(dados['professor_id']).id}",
+                "turma": Turma.query.get(dados["turma_id"]).nome,
                 "presencas": [{
                     "aluno": presenca["numero"],
                     "presenca": presenca["timestamp"].strftime("%d/%m/%Y %H:%M")
