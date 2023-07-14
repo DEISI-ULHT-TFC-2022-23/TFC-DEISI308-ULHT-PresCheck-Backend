@@ -13,6 +13,7 @@ Formato:
         unidade_id: (ID da unidade),
         professor_id: (ID do professor),
         turma_id: (ID da turma),
+        ip_address: (IP do arduino),
         inicio: (Timestamp de início da aula),
         alunos : [
             {
@@ -77,7 +78,8 @@ def get_aulas():
 def iniciar_aula():
     # Obtém os dados JSON da solicitação POST
     params = request.get_json()
-    sala_a_abrir, professor_id, unidade_id, turma_id = params['sala'], params['professor_id'], params['unidade_id'], params['turma_id']
+    sala_a_abrir, professor_id, unidade_id, turma_id = params['sala'], params['professor_id'], params['unidade_id'], \
+    params['turma_id']
 
     # Verifica se os dados JSON obtidos são inválidos
     if not sala_a_abrir or not professor_id or not unidade_id or not turma_id:
@@ -97,16 +99,22 @@ def iniciar_aula():
     if sala_a_abrir in aulas_a_decorrer:
         return jsonify(error="Já existe um registo ativo desta sala."), 409
 
-    # Cria um dicionário com os dados da aula que será iniciada
+    arduino = Arduino.get_arduino_by_sala("nome", sala_a_abrir)
+    if not arduino:
+        return jsonify(error="Não existe nenhum arduino associado a esta sala."), 404
+
+        # Cria um dicionário com os dados da aula que será iniciada
     data = {
         'estado': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
         'turma_id': turma_id,
+        'ip_address': arduino.ip_address,
         'inicio': datetime.datetime.now(),
         'alunos': []
     }
-
+    from app import acao_arduino
+    acao_arduino(arduino.ip_address, "aula")
     # Adiciona a aula em andamento à lista de aulas em andamento, usando o nome da sala como chave
     aulas_a_decorrer[sala_a_abrir] = data
     return jsonify(message="Aula iniciada."), 200
@@ -114,15 +122,12 @@ def iniciar_aula():
 
 @main.route("/aula/controlar", methods=["POST"])
 def controlar_aula():
-    # Obtém os dados JSON da solicitação POST
     params = request.get_json()
     sala_param, acao_param = params['sala'], params['acao']
 
-    # Verifica se os dados JSON obtidos são inválidos
     if not sala_param or not acao_param:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    # Verifica qual ação foi realizada no formulário
     match acao_param:
         case "GO":
             # Atualiza o estado da aula em andamento para "GO"
@@ -135,29 +140,27 @@ def controlar_aula():
             return jsonify(state="STOP"), 200
 
         case "CANCEL":
-            # Atualiza o estado da aula em andamento para "STOP"
-            del aulas_a_decorrer[sala_param]
+            aula = aulas_a_decorrer[sala_param]
+            from app import acao_arduino
+            acao_arduino(aula['ip_address'], "encerrar")
+            del aula
             return jsonify(state="CANCEL"), 200
 
         case "FINISH":
-            # Obtém os dados da sala em andamento
-            dados_sala = aulas_a_decorrer[sala_param]
+            aula = aulas_a_decorrer[sala_param]
 
-            # Cria uma aula na base de dados com as informações da sala em andamento
             nova_aula = Aula.create(sala_param,
-                                    dados_sala['unidade_id'],
-                                    dados_sala['professor_id'],
-                                    dados_sala['turma_id'],
-                                    dados_sala['inicio'])
+                                    aula['unidade_id'],
+                                    aula['professor_id'],
+                                    aula['turma_id'],
+                                    aula['inicio'])
 
-            # Cria as presenças na base de dados associadas à aula
-            Presenca.create(nova_aula[1].id, dados_sala['alunos'])
-
-            # Remove a sala em andamento da lista de aulas em andamento e retorna o código a informar que foi processado
-            del aulas_a_decorrer[sala_param]
+            Presenca.create(nova_aula[1].id, aula['alunos'])
+            from app import acao_arduino
+            acao_arduino(aula['ip_address'], "encerrar")
+            del aula
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200
 
-    # Retorna o estado da aula atualizado
     return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
 
 
@@ -196,41 +199,33 @@ def get_presencas():
 
 @main.route("/presencas/arduino", methods=["PUT"])
 def arduino_presenca():
-    # Obtém os dados JSON da solicitação POST
     params = request.get_json()
-    arduino_id, disp_uid = params['identifier'].strip(), params['uid'].strip()
+    token = params['token']
 
-    # Verifica se os dados JSON obtidos são inválidos
-    if not arduino_id or not disp_uid:
+    if not token:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    # Consulta o modelo de banco de dados "Sala" usando o valor da chave "identifier" obtida dos dados JSON
-    sala = Sala.get_sala_by_arduino(arduino_id)
+    from app import Configuration
+    data = jwt.decode(token,
+                      key=Configuration.ARDUINO_SECRET_KEY,
+                      algorithms=['HS256', ])
 
-    # Verifica se a sala obtida da consulta não existe ou se o ‘id’ da sala não está presente na lista
-    # "aulas_a_decorrer"
-    if not sala or sala.nome not in aulas_a_decorrer:
-        return jsonify(error="A sala não foi encontrada ou não existe marcação ativa."), 404
+    arduino_uid, disp_uid = data["identifier"], data["uid"]
+    sala = Sala.get_sala_by_arduino(arduino_uid)
+    if not sala:
+        return jsonify(error="Sala não encontrada."), 404
 
-    # Guarda o dicionário da sala selecionada numa variável
-    sala_selecionada = aulas_a_decorrer[sala.id]
-
-    # Verifica se o valor da chave "status" da sala selecionada é igual a "STOP"
-    if sala_selecionada['estado'] == "STOP":
-        return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
-
-    # Consulta o modelo da base de dados "Aluno" e "Dispositivo" usando o valor hash do UID gerado anteriormente
     aluno = Aluno.get_aluno_by_disp(disp_uid)
-
-    # Verifica se o aluno obtido da consulta não existe
     if not aluno:
-        return jsonify(error="Não existe nenhum aluno associado ao UID lido."), 404
+        return jsonify(error="Aluno não encontrado."), 404
+
+    sala_selecionada = aulas_a_decorrer[sala.nome]
+    if not sala_selecionada:
+        return jsonify(error="Não existe nenhuma aula a decorrer nesta sala."), 404
 
     if any(aluno["numero"] == aluno.id for aluno in sala_selecionada['alunos']):
         return jsonify(error="Aluno já está na lista de presenças"), 304
 
-    # Adiciona o número do aluno à lista de presenças,
-    # avisa que existem alunos novos na lista e retorna uma resposta JSON com o código 200 OK
     sala_selecionada['alunos'].append({"numero": aluno.id, "timestamp": datetime.datetime.now()})
     return jsonify(message="Marcação da presença efetuada com sucesso."), 200
 

@@ -3,11 +3,12 @@ import os
 
 class Configuration:
     # Configurações da App
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'secretkey'
-    ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY') or 'arduinos'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY')
+    ARDUINO_AUTH_KEY = os.environ.get('ARDUINO_AUTH_KEY')
 
-    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME') or 'admin'
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'admin'
+    ADMIN_USERNAME = os.environ.get('ADMIN_USER') or 'admin'
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 
     # Configurações da base de dados
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True

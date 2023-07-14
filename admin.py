@@ -1,9 +1,4 @@
 from flask import Blueprint, jsonify, request
-import requests
-from threading import Thread
-
-import auth
-from main import aulas_a_decorrer
 from models import *
 
 admin = Blueprint('admin', __name__)
@@ -67,7 +62,9 @@ def admin_utilizadores_criar():
         if user[0] is False:
             return jsonify(error="O utilizador já existe."), 409
 
-        Thread(target=auth.send_email, args=(
+        from threading import Thread
+        from auth import send_email
+        Thread(target=send_email, args=(
             user[1].username,
             user[2],
             "ULHT PresCheck - Criação de acesso",
@@ -239,29 +236,23 @@ def admin_alunos_id(aluno_id):
 
 @admin.route("/admin/alunos/associar", methods=["POST"])
 def admin_alunos_associar():
-    try:
-        arduino_response = requests.get("http://localhost:5001/arduino")
-    except ConnectionError:
-        return jsonify(error="Não foi possível estabelecer ligação com o Arduino."), 500
+    params = request.get_json()
+    sala = params["sala"]
 
-    if arduino_response.status_code != 200:
-        return jsonify(error=arduino_response.json()), arduino_response.status_code
+    if sala is None:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    params = arduino_response.json()
-    arduino_response.close()
-    from app import Configuration
-    data = jwt.decode(params['token'],
+    arduino = Arduino.get_arduino_by_sala("nome", sala)
+    if not arduino:
+        return jsonify(error="Arduino não encontrado"), 404
+
+    from app import Configuration, acao_arduino
+    json = acao_arduino(arduino.ip_address, "registo")
+    data = jwt.decode(json['token'],
                       key=Configuration.ARDUINO_SECRET_KEY,
                       algorithms=['HS256', ])
 
     arduino_id, disp_uid = data["identifier"], data["uid"]
-    if not arduino_id or not disp_uid:
-        return jsonify(error="Arduino não encontrado"), 404
-
-    arduino = Sala.get_sala_by_arduino(arduino_id)
-    if not arduino:
-        return jsonify(error="O arduino não está associado a nenhuma sala."), 404
-
     return jsonify(uid=disp_uid), 200
 
 
@@ -289,18 +280,36 @@ def admin_alunos_criar():
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
+@admin.route("/admin/alunos/editar/<int:aluno_id>", methods=["PUT"])
+def admin_alunos_editar(aluno_id):
+    params = request.get_json()
+    turma = params["turma"]
+    if not turma:
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        aluno = Aluno.query.get(aluno_id)
+        if not aluno:
+            return jsonify(error="Aluno não encontrado"), 404
+
+        update = aluno.update(turma=turma, commit=True)
+        if not update:
+            return jsonify(error="A turma atribuida está inválida."), 409
+
+        return jsonify(message="Aluno editado com sucesso"), 200
+    except Exception:
+        return jsonify(error="Ocorreu um problema a editar na base de dados."), 500
+
+
 @admin.route("/admin/alunos/eliminar/<int:aluno_id>", methods=["DELETE"])
 def admin_alunos_eliminar(aluno_id):
     try:
-        numero = int(aluno_id)
-        deletion = Aluno.delete(numero)
+        deletion = Aluno.delete(aluno_id)
 
         if deletion is False:
             return jsonify(error="Aluno não encontrado"), 404
 
         return jsonify(), 200
-    except ValueError:
-        return jsonify(error="Número de aluno inválido"), 400
     except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
 
@@ -326,8 +335,7 @@ def admin_dispositivo_criar():
 @admin.route("/admin/dispositivo/eliminar/<int:aluno_id>/<string:uid>", methods=["DELETE"])
 def admin_dispositivo_eliminar(aluno_id, uid):
     try:
-        numero = int(aluno_id)
-        deletion = Dispositivo.delete(numero, uid)
+        deletion = Dispositivo.delete(aluno_id, uid)
 
         if deletion is False:
             return jsonify(error="Não foi possível eliminar o dispositivo."), 404
@@ -422,6 +430,9 @@ def admin_salas_eliminar(sala_id):
         if sala is False:
             return jsonify(error="Sala não encontrada"), 404
 
+        arduino = Arduino.get_arduino_by_sala(sala_id)
+        Arduino.delete(arduino.id)
+
         return jsonify(), 200
     except Exception:
         return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
@@ -441,6 +452,7 @@ def admin_aulas(tipo):
 
         case "ativas":
             # Aulas ativas
+            from main import aulas_a_decorrer
             return jsonify(aulas=[{
                 "sala": sala,
                 "estado": dados["estado"],
@@ -478,6 +490,7 @@ def admin_aulas_detalhes(tipo, aula):
 
         case "ativas":
             # Aulas ativas
+            from main import aulas_a_decorrer
             dados = aulas_a_decorrer.get(aula)
 
             if not dados:

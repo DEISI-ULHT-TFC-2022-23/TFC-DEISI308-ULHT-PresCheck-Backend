@@ -1,6 +1,8 @@
+import requests
 from flask import Flask
 from flask_mail import Mail
 from flask_cors import CORS
+import jwt
 
 from config import Configuration
 from admin import admin as admin_blueprint
@@ -28,6 +30,19 @@ def init_db():
                     is_admin=True)
 
 
+def acao_arduino(ip_address, acao):
+    token = jwt.encode({"identifier": Configuration.ARDUINO_AUTH_KEY},
+                       key=Configuration.ARDUINO_SECRET_KEY,
+                       algorithm='HS256')
+    try:
+        arduino_response = requests.get(f"http://{ip_address}:5001/arduino/{acao}",
+                                        headers={"Authorization": f"Bearer {token}"})
+        arduino_response.close()
+        return arduino_response.json()
+    except ConnectionError as e:
+        print(e)
+
+
 # Registro dos blueprints (módulos) na app
 app.register_blueprint(main_blueprint)
 app.register_blueprint(auth_blueprint)
@@ -39,11 +54,8 @@ if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
 
 # TODO: Melhorar as condições "if" para verificar se os parâmetros são válidos e otimizar o código
-# TODO: Rever a arquitetura entre backend e arduino na rota "/admin/alunos/associar"(admin) e "presencas/arduino"(main)
-# TODO: Implementar encriptação dos dados de UID de dispositivo e arduino na base de dados
 # TODO: Implementar JWT em todas as rotas
 # TODO: Alterar os métodos HTTP para os corretos (ex: PUT para POST na criação de objetos)
 # TODO: Implementar paginação nas rotas de listagem
-# TODO: Rever a implementação do CORS
 # TODO: Rever as rotas do main.py para melhorar a arquitetura
 # TODO: Decidir as estatisticas a apresentar

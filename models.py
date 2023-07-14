@@ -361,6 +361,18 @@ class Aluno(db.Model):
     def get_turma_name(self):
         return Turma.query.get(self.turma_id).nome
 
+    def update_turma(self, turma_id, commit=False):
+        turma_exists = Turma.query.get(turma_id)
+        if turma_id != self.turma_id and turma_exists:
+            self.turma_id = turma_id
+        else:
+            return False
+
+        if commit:
+            db.session.commit()
+
+        return True
+
     @staticmethod
     def create(aluno_id, turma_id):
         aluno_exists = Aluno.query.get(aluno_id)
@@ -386,8 +398,7 @@ class Aluno(db.Model):
 
     @staticmethod
     def get_aluno_by_disp(disp_uid):
-        aluno_uid_hash = generate_password_hash(disp_uid, method='sha256')
-        return Aluno.query.join(Dispositivo).filter(Dispositivo.uid == aluno_uid_hash).first()
+        return Aluno.query.join(Dispositivo).filter(Dispositivo.uid == disp_uid).first()
 
 
 class Dispositivo(db.Model):
@@ -449,6 +460,10 @@ class Sala(db.Model):
 
     def __str__(self):
         return self.nome
+
+    @staticmethod
+    def get_sala_by_arduino(arduino_uid):
+        return Sala.query.join(Arduino).filter(Arduino.uid == arduino_uid).first()
 
     @staticmethod
     def create(nome):
@@ -516,8 +531,11 @@ class Arduino(db.Model):
         return False
 
     @staticmethod
-    def get_arduino_by_sala(sala_id):
-        return Arduino.query.filter_by(sala_id=sala_id).all()
+    def get_arduino_by_sala(tipo, sala):
+        if tipo == 'nome':
+            return Arduino.query.join(Sala).filter(Sala.nome == sala).first()
+        elif tipo == 'id':
+            return Arduino.query.filter_by(sala_id=sala).first()
 
     @staticmethod
     def get_arduino_by_uid(uid):
