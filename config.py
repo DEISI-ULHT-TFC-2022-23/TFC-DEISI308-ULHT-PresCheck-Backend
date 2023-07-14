@@ -7,7 +7,7 @@ class Configuration:
     ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY')
     ARDUINO_AUTH_KEY = os.environ.get('ARDUINO_AUTH_KEY')
 
-    ADMIN_USERNAME = os.environ.get('ADMIN_USER') or 'admin'
+    ADMIN_USERNAME = 'admin'
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 
     # Configurações da base de dados
