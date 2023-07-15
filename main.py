@@ -32,13 +32,6 @@ Formato:
 aulas_a_decorrer = {}
 
 
-def acao_aula_arduino(ip_address, acao="encerrar"):
-    from app import acao_arduino
-    Thread(target=acao_arduino, args=(
-        ip_address,
-        acao,)).start()
-
-
 @main.route("/unidades", methods=["GET"])
 def get_unidades():
     if not request.args or not request.args.get('professor_id', type=int):
@@ -127,7 +120,8 @@ def iniciar_aula():
         'alunos': []
     }
 
-    acao_aula_arduino(arduino.ip_address, "aula")
+    from app import thread_arduino
+    thread_arduino(arduino.ip_address, "aula")
     return jsonify(message="Aula iniciada."), 200
 
 
@@ -138,6 +132,9 @@ def controlar_aula():
 
     if not sala_param or not acao_param:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    if sala_param not in aulas_a_decorrer:
+        return jsonify(error="Não existe nenhum registo ativo desta sala."), 404
 
     match acao_param:
         case "GO":
@@ -152,13 +149,13 @@ def controlar_aula():
 
         case "CANCEL":
             aula = aulas_a_decorrer[sala_param]
-            acao_aula_arduino(aula['ip_address'])
+            from app import thread_arduino
+            thread_arduino(aula['ip_address'])
             del aula
             return jsonify(state="CANCEL"), 200
 
         case "FINISH":
             aula = aulas_a_decorrer[sala_param]
-
             nova_aula = Aula.create(sala_param,
                                     aula['unidade_id'],
                                     aula['professor_id'],
@@ -166,11 +163,13 @@ def controlar_aula():
                                     aula['inicio'])
 
             Presenca.create(nova_aula[1], aula['alunos'])
-            acao_aula_arduino(aula['ip_address'])
+            from app import thread_arduino
+            thread_arduino(aula['ip_address'])
             del aula
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200
 
-    return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
+        case _:
+            return jsonify(status=aulas_a_decorrer[sala_param]['estado']), 200
 
 
 @main.route("/aula/exportar", methods=["GET"])

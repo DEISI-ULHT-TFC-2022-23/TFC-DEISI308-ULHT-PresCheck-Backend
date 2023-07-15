@@ -3,6 +3,7 @@ from flask import Flask
 from flask_mail import Mail
 from flask_cors import CORS
 import jwt
+from concurrent.futures import ThreadPoolExecutor
 
 from config import Configuration
 from admin import admin as admin_blueprint
@@ -19,18 +20,25 @@ CORS(app)
 db.init_app(app)
 mail.init_app(app)
 
+executor = ThreadPoolExecutor()
+
+
+def thread_arduino(ip_address, acao="encerrar"):
+    executor.submit(acao_arduino, ip_address, acao)
+
 
 def acao_arduino(ip_address, acao):
     token = jwt.encode({"identifier": Configuration.ARDUINO_AUTH_KEY},
                        key=Configuration.ARDUINO_SECRET_KEY,
                        algorithm='HS256')
-    try:
-        arduino_response = requests.get(f"http://{ip_address}:5001/arduino/{acao}",
-                                        headers={"Authorization": f"Bearer {token}"})
-        arduino_response.close()
-        return arduino_response.json()
-    except ConnectionError as e:
-        print(e)
+    with requests.Session() as session:
+        try:
+            arduino_response = session.get(f"http://{ip_address}:5001/arduino/{acao}",
+                                           headers={"Authorization": f"Bearer {token}"})
+            arduino_response.raise_for_status()
+            return arduino_response.json()
+        except requests.exceptions.RequestException as e:
+            print(e)
 
 
 with app.app_context():
@@ -44,7 +52,6 @@ app.register_blueprint(main_blueprint)
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(admin_blueprint)
 app.register_blueprint(stats_blueprint)
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
