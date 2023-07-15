@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from models import *
+from threading import Thread
 
 admin = Blueprint('admin', __name__)
 
@@ -50,8 +51,7 @@ def admin_utilizadores_username(username):
 def admin_utilizadores_criar():
     params = request.get_json()
     username, is_admin, is_professor, unidades, turmas = params["username"], params["admin"], params["professor"], \
-    params[
-        "unidades"], params["turmas"]
+        params["unidades"], params["turmas"]
 
     if not username or unidades is None or is_admin is None or is_professor is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
@@ -62,7 +62,6 @@ def admin_utilizadores_criar():
         if not user[0]:
             return jsonify(error="O utilizador já existe."), 409
 
-        from threading import Thread
         from auth import send_email
         Thread(target=send_email, args=(
             user[1].username,
@@ -231,7 +230,8 @@ def admin_alunos_id(aluno_id):
                     aluno.dispositivos]
 
     ultimas_presencas = aluno.get_last_classes()
-    return jsonify(aluno=aluno.id, turma=aluno.get_turma_name(), dispositivos=dispositivos, ultimas_presencas=ultimas_presencas), 200
+    return jsonify(aluno=aluno.id, turma=aluno.get_turma_name(), dispositivos=dispositivos,
+                   ultimas_presencas=ultimas_presencas), 200
 
 
 @admin.route("/admin/alunos/associar", methods=["POST"])
@@ -396,7 +396,7 @@ def admin_unidades_eliminar(unidade_id):
 
 @admin.route("/admin/salas", methods=["GET"])
 def admin_salas():
-    salas = [{"id": sala.id, "nome": sala.nome, "arduino": sala.arduino_id} for sala in Sala.query.all()]
+    salas = [{"id": sala.id, "nome": sala.nome, "arduino": sala.arduino.uid} for sala in Sala.query.all()]
     return jsonify(salas=salas), 200
 
 

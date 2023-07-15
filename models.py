@@ -60,10 +60,6 @@ class Unidade(db.Model):
             return True
         return False
 
-    @staticmethod
-    def avg_presencas_by_unidade():
-        pass
-
 
 class Professor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -489,6 +485,8 @@ class Arduino(db.Model):
     ip_address = db.Column(db.String(100), nullable=False, unique=True)
     sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
     sala = db.relationship("Sala", back_populates="arduino", uselist=False)
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, onupdate=func.now())
 
     def __repr__(self):
         return '<Arduino %r>' % self.id

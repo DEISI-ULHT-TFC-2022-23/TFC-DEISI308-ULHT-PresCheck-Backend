@@ -1,5 +1,6 @@
 import datetime
 from flask import Blueprint, request, jsonify
+from threading import Thread
 
 from models import *
 
@@ -48,6 +49,23 @@ def get_unidades():
     return jsonify(unidades=unidades), 200
 
 
+@main.route("/turmas", methods=["GET"])
+def get_turmas():
+    if not request.args or not request.args.get('professor_id', type=int):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        professor_id = int(request.args.get('professor_id'))
+    except ValueError:
+        return jsonify(error="[CRITICAL] Parâmetro incorreto - só se aceitam números!"), 400
+
+    turmas = Professor.get_turmas(professor_id)
+    if not turmas:
+        return jsonify(error="Não existem professores com esse id."), 404
+
+    return jsonify(turmas=turmas), 200
+
+
 @main.route("/aulas", methods=["GET"])
 def get_aulas():
     if not request.args or not request.args.get('professor_id', type=int):
@@ -58,13 +76,13 @@ def get_aulas():
     except ValueError:
         return jsonify(error="[CRITICAL] Parâmetro incorreto - só se aceitam números!"), 400
 
-    aula_ativa = {}
-    for sala, dados in aulas_a_decorrer.items():
-        if dados['professor_id'] == professor_id:
-            unidade = Unidade.query.get(dados['unidade_id'])
-            aula_ativa = {'sala': sala, 'unidade': unidade.nome, 'estado': dados['estado']}
-
-    return jsonify(aula_ativa), 200
+    aula_ativa = [{
+        'sala': sala,
+        'unidade': Unidade.query.get(dados['unidade_id']).nome,
+        'turma': Turma.query.get(dados['turma_id']).nome,
+        'estado': dados['estado']
+    } for sala, dados in aulas_a_decorrer.items() if dados['professor_id'] == professor_id]
+    return jsonify(aula_ativa[0]), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
@@ -92,7 +110,7 @@ def iniciar_aula():
     if not arduino:
         return jsonify(error="Não existe nenhum arduino associado a esta sala."), 404
 
-    data = {
+    aulas_a_decorrer[sala_a_abrir] = {
         'estado': 'GO',
         'unidade_id': unidade_id,
         'professor_id': professor_id,
@@ -103,8 +121,9 @@ def iniciar_aula():
     }
 
     from app import acao_arduino
-    acao_arduino(arduino.ip_address, "aula")
-    aulas_a_decorrer[sala_a_abrir] = data
+    Thread(target=acao_arduino, args=(
+        arduino.ip_address,
+        "aula",)).start()
     return jsonify(message="Aula iniciada."), 200
 
 
@@ -130,7 +149,9 @@ def controlar_aula():
         case "CANCEL":
             aula = aulas_a_decorrer[sala_param]
             from app import acao_arduino
-            acao_arduino(aula['ip_address'], "encerrar")
+            Thread(target=acao_arduino, args=(
+                aula['ip_address'],
+                "encerrar",)).start()
             del aula
             return jsonify(state="CANCEL"), 200
 
@@ -145,7 +166,9 @@ def controlar_aula():
 
             Presenca.create(nova_aula[1].id, aula['alunos'])
             from app import acao_arduino
-            acao_arduino(aula['ip_address'], "encerrar")
+            Thread(target=acao_arduino, args=(
+                aula['ip_address'],
+                "encerrar",)).start()
             del aula
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200
 
@@ -169,12 +192,10 @@ def get_presencas():
     if request.args.get('sala') not in aulas_a_decorrer:
         return jsonify(error="A sala não tem marcação registada."), 404
 
-    sala_selecionada = aulas_a_decorrer[request.args.get('sala')]
-
     return jsonify(alunos=[{
         "numero": aluno["numero"],
         "timestamp": aluno["timestamp"].strftime("%d/%m/%Y %H:%M")
-    } for aluno in sala_selecionada['alunos']]), 200
+    } for aluno in aulas_a_decorrer[request.args.get('sala')]['alunos']]), 200
 
 
 @main.route("/presencas/arduino", methods=["PUT"])
@@ -195,16 +216,16 @@ def arduino_presenca():
     if not sala:
         return jsonify(error="Sala não encontrada."), 404
 
-    aluno = Aluno.get_aluno_by_disp(disp_uid)
-    if not aluno:
-        return jsonify(error="Aluno não encontrado."), 404
-
     sala_selecionada = aulas_a_decorrer[sala.nome]
     if not sala_selecionada:
         return jsonify(error="Não existe nenhuma aula a decorrer nesta sala."), 404
 
     if sala_selecionada['estado'] == "STOP":
         return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
+
+    aluno = Aluno.get_aluno_by_disp(disp_uid)
+    if not aluno:
+        return jsonify(error="Aluno não encontrado."), 404
 
     if any(aluno["numero"] == aluno.id for aluno in sala_selecionada['alunos']):
         return jsonify(error="Aluno já está na lista de presenças"), 409
@@ -225,7 +246,6 @@ def marcar_presenca():
         return jsonify(error="A sala não tem nenhum registo ativo."), 404
 
     sala_selecionada = aulas_a_decorrer[sala_a_controlar]
-
     if sala_selecionada['estado'] == "STOP":
         return jsonify(error="Não pode marcar presença numa sala que se encontra com marcações em pausa."), 403
 
