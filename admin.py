@@ -393,8 +393,7 @@ def admin_unidades_eliminar(unidade_id):
 
 @admin.route("/admin/salas", methods=["GET"])
 def admin_salas():
-    salas = [{"id": sala.id, "nome": sala.nome, "arduino": Arduino.get_arduino_by_sala("id", sala.id).uid}
-             for sala in Sala.query.all()]
+    salas = [{"id": sala.id, "nome": sala.nome, "arduino": sala.arduino.uid} for sala in Sala.query.all()] or []
     return jsonify(salas=salas), 200
 
 
