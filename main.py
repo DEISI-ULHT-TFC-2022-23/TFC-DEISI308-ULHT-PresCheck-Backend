@@ -1,7 +1,5 @@
 import datetime
 from flask import Blueprint, request, jsonify
-from threading import Thread
-
 from models import *
 
 main = Blueprint('main', __name__)
@@ -30,6 +28,12 @@ Formato:
 }
 """
 aulas_a_decorrer = {}
+
+
+def thread_arduino(ip_address, acao="encerrar"):
+    from app import executor, acao_arduino
+    executor.submit(acao_arduino,
+                    ip_address, acao)
 
 
 @main.route("/unidades", methods=["GET"])
@@ -120,7 +124,6 @@ def iniciar_aula():
         'alunos': []
     }
 
-    from app import thread_arduino
     thread_arduino(arduino.ip_address, "aula")
     return jsonify(message="Aula iniciada."), 200
 
@@ -149,7 +152,6 @@ def controlar_aula():
 
         case "CANCEL":
             aula = aulas_a_decorrer[sala_param]
-            from app import thread_arduino
             thread_arduino(aula['ip_address'])
             del aula
             return jsonify(state="CANCEL"), 200
@@ -163,7 +165,6 @@ def controlar_aula():
                                     aula['inicio'])
 
             Presenca.create(nova_aula[1], aula['alunos'])
-            from app import thread_arduino
             thread_arduino(aula['ip_address'])
             del aula
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200

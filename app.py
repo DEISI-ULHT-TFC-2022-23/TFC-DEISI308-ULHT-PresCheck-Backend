@@ -23,10 +23,6 @@ mail.init_app(app)
 executor = ThreadPoolExecutor()
 
 
-def thread_arduino(ip_address, acao="encerrar"):
-    executor.submit(acao_arduino, ip_address, acao)
-
-
 def acao_arduino(ip_address, acao):
     token = jwt.encode({"identifier": Configuration.ARDUINO_AUTH_KEY},
                        key=Configuration.ARDUINO_SECRET_KEY,
@@ -39,6 +35,7 @@ def acao_arduino(ip_address, acao):
             return arduino_response.json()
         except requests.exceptions.RequestException as e:
             print(e)
+            return {"error": "Não foi possível estabelecer ligação com o Arduino"}, 500
 
 
 with app.app_context():

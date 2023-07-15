@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, request
 from models import *
-from threading import Thread
 
 admin = Blueprint('admin', __name__)
 
@@ -63,11 +62,9 @@ def admin_utilizadores_criar():
             return jsonify(error="O utilizador já existe."), 409
 
         from auth import send_email
-        Thread(target=send_email, args=(
-            user[1].username,
-            user[2],
-            "ULHT PresCheck - Criação de acesso",
-            "send_password.html",)).start()
+        from app import executor
+        executor.submit(send_email,
+                        user[1].username, user[2], "ULHT PresCheck - Criação de acesso", "send_password.html")
 
         return jsonify(message="Utilizador criado com sucesso"), 200
     except Exception:
