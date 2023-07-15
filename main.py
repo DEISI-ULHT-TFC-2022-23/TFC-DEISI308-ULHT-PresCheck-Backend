@@ -86,7 +86,7 @@ def get_aulas():
         'turma': Turma.query.get(dados['turma_id']).nome,
         'estado': dados['estado']
     } for sala, dados in aulas_a_decorrer.items() if dados['professor_id'] == professor_id]
-    return jsonify(aula_ativa[0]), 200
+    return jsonify(aula_ativa[0] or {}), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])
@@ -151,9 +151,8 @@ def controlar_aula():
             return jsonify(state="STOP"), 200
 
         case "CANCEL":
-            aula = aulas_a_decorrer[sala_param]
-            thread_arduino(aula['ip_address'])
-            del aula
+            thread_arduino(aulas_a_decorrer[sala_param]['ip_address'])
+            del aulas_a_decorrer[sala_param]
             return jsonify(state="CANCEL"), 200
 
         case "FINISH":
@@ -166,7 +165,7 @@ def controlar_aula():
 
             Presenca.create(nova_aula[1], aula['alunos'])
             thread_arduino(aula['ip_address'])
-            del aula
+            del aulas_a_decorrer[sala_param]
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200
 
         case _:

@@ -139,7 +139,7 @@ class Professor(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(8), unique=True, nullable=False)
-    password = db.Column(db.String(100), nullable=False)
+    password = db.Column(db.String(), nullable=False)
     is_admin = db.Column(db.Boolean(), nullable=False)
     is_active = db.Column(db.Boolean(), nullable=False)
     reset_token = db.Column(db.Integer, nullable=True)
@@ -594,10 +594,10 @@ class Presenca(db.Model):
     def create(aula, alunos):
         presencas = []
         for aluno in alunos:
-            aluno_selecionado = Aluno.create(aluno["numero"], aula["turma_id"])
+            aluno_selecionado = Aluno.create(aluno["numero"], aula.turma_id)
 
             nova_presenca = Presenca()
-            nova_presenca.aula_id = aula["id"]
+            nova_presenca.aula_id = aula.id
             nova_presenca.aluno_id = aluno_selecionado[1].id
             nova_presenca.created_at = aluno["timestamp"]
             presencas.append(nova_presenca)
