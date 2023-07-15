@@ -573,7 +573,7 @@ class Aula(db.Model):
     @staticmethod
     def export(aula_id):
         aula = Aula.query.get(aula_id)
-        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas]
+        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas] or []
         return data, aula.created_at.strftime('%d/%m/%Y às %H:%M')
 
 

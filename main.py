@@ -32,6 +32,13 @@ Formato:
 aulas_a_decorrer = {}
 
 
+def acao_aula_arduino(ip_address, acao="encerrar"):
+    from app import acao_arduino
+    Thread(target=acao_arduino, args=(
+        ip_address,
+        acao,)).start()
+
+
 @main.route("/unidades", methods=["GET"])
 def get_unidades():
     if not request.args or not request.args.get('professor_id', type=int):
@@ -120,10 +127,7 @@ def iniciar_aula():
         'alunos': []
     }
 
-    from app import acao_arduino
-    Thread(target=acao_arduino, args=(
-        arduino.ip_address,
-        "aula",)).start()
+    acao_aula_arduino(arduino.ip_address, "aula")
     return jsonify(message="Aula iniciada."), 200
 
 
@@ -148,10 +152,7 @@ def controlar_aula():
 
         case "CANCEL":
             aula = aulas_a_decorrer[sala_param]
-            from app import acao_arduino
-            Thread(target=acao_arduino, args=(
-                aula['ip_address'],
-                "encerrar",)).start()
+            acao_aula_arduino(aula['ip_address'])
             del aula
             return jsonify(state="CANCEL"), 200
 
@@ -164,11 +165,8 @@ def controlar_aula():
                                     aula['turma_id'],
                                     aula['inicio'])
 
-            Presenca.create(nova_aula[1].id, aula['alunos'])
-            from app import acao_arduino
-            Thread(target=acao_arduino, args=(
-                aula['ip_address'],
-                "encerrar",)).start()
+            Presenca.create(nova_aula[1], aula['alunos'])
+            acao_aula_arduino(aula['ip_address'])
             del aula
             return jsonify(message="Registos inseridos e aula terminada.", aula_id=nova_aula[1].id), 200
 
