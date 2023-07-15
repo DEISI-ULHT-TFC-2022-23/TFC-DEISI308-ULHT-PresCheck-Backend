@@ -3,6 +3,6 @@ FLASK_DEBUG=True
 SECRET_KEY=secretkey
 ARDUINO_SECRET_KEY=arduinos
 ARDUINO_AUTH_KEY=backend
+ADMIN_PASSWORD=admin
 MAIL_USERNAME=ulht-prescheck@outlook.pt
 MAIL_PASSWORD=TFC_lusofona.2023
-ADMIN_PASSWORD=admin

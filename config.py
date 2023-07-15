@@ -8,7 +8,7 @@ class Configuration:
     ARDUINO_AUTH_KEY = os.environ.get('ARDUINO_AUTH_KEY')
 
     ADMIN_USERNAME = 'admin'
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'admin'
 
     # Configurações da base de dados
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True

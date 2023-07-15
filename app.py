@@ -20,15 +20,6 @@ db.init_app(app)
 mail.init_app(app)
 
 
-def init_db():
-    with app.app_context():
-        db.create_all()
-        User.create(user_id=1,
-                    username=Configuration.ADMIN_USERNAME,
-                    password=Configuration.ADMIN_PASSWORD,
-                    is_admin=True)
-
-
 def acao_arduino(ip_address, acao):
     token = jwt.encode({"identifier": Configuration.ARDUINO_AUTH_KEY},
                        key=Configuration.ARDUINO_SECRET_KEY,
@@ -42,13 +33,20 @@ def acao_arduino(ip_address, acao):
         print(e)
 
 
+with app.app_context():
+    db.create_all()
+    User.create(user_id=1,
+                username=app.config['ADMIN_USERNAME'],
+                password=app.config['ADMIN_PASSWORD'],
+                is_admin=True)
+
 app.register_blueprint(main_blueprint)
 app.register_blueprint(auth_blueprint)
 app.register_blueprint(admin_blueprint)
 app.register_blueprint(stats_blueprint)
 
+
 if __name__ == "__main__":
-    init_db()
     app.run(host='0.0.0.0', port=5000)
 
 # TODO: Implementar JWT em todas as rotas

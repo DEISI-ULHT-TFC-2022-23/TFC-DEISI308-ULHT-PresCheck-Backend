@@ -260,7 +260,7 @@ class User(db.Model):
 
         db.session.add(user)
         db.session.commit()
-        return True, user, random_password
+        return True, user, (password or random_password)
 
     @staticmethod
     def login_user(username, password):
