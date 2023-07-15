@@ -1,9 +1,9 @@
 import requests
+import jwt
+from concurrent.futures import ThreadPoolExecutor
 from flask import Flask
 from flask_mail import Mail
 from flask_cors import CORS
-import jwt
-from concurrent.futures import ThreadPoolExecutor
 
 from config import Configuration
 from admin import admin as admin_blueprint
@@ -51,7 +51,13 @@ app.register_blueprint(admin_blueprint)
 app.register_blueprint(stats_blueprint)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    try:
+        print("A iniciar o servidor...")
+        app.run(host='0.0.0.0', port=5000)
+    finally:
+        print("A encerrar o servidor...")
+        executor.shutdown(wait=True)
+        exit(0)
 
 # TODO: Implementar JWT em todas as rotas
 # TODO: Alterar os métodos HTTP para os corretos (ex: PUT para POST na criação de objetos)
