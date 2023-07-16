@@ -462,7 +462,7 @@ def admin_aulas_detalhes(tipo, aula):
     match tipo:
         case "todas":
             # Todas as aulas
-            aula = Aula.query.filter_by(id=aula).first()
+            aula = Aula.query.get(aula)
             if not aula:
                 return jsonify(error="Aula não encontrada"), 404
 

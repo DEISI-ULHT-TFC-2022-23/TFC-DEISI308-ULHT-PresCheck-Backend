@@ -278,3 +278,57 @@ def eliminar_presenca():
 
     sala_selecionada['alunos'] = [aluno for aluno in sala_selecionada['alunos'] if aluno["numero"] != num_aluno]
     return jsonify(message="Aluno retirado da lista com sucesso"), 200
+
+
+@main.route("/historico", methods=["GET"])
+def get_historico():
+    if not request.args or not request.args.get('professor_id', type=int):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        professor_id = int(request.args.get('professor_id'))
+    except ValueError:
+        return jsonify(error="[CRITICAL] Parâmetro incorreto - só se aceitam números!"), 400
+
+    return jsonify(aulas=[{
+        "id": aula.id,
+        "unidade": aula.unidade.nome,
+        "sala": aula.sala.nome,
+        "turma": aula.turma.nome,
+        "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
+    } for aula in Professor.query.get(professor_id).aulas]), 200
+
+
+@main.route("/historico/aula", methods=["GET"])
+def get_historico_aula():
+    if not request.args or not request.args.get('aula_id', type=int) or not request.args.get('professor_id', type=int):
+        return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
+
+    try:
+        aula_id = int(request.args.get('aula_id'))
+        professor_id = int(request.args.get('professor_id'))
+    except ValueError:
+        return jsonify(error="[CRITICAL] Parâmetros incorretos - só se aceitam números!"), 400
+
+    aula = Aula.query.get(aula_id)
+    if not aula:
+        return jsonify(error="Aula não encontrada."), 404
+
+    if aula.professor.id != professor_id:
+        return jsonify(error="Aula não pertence ao professor."), 403
+
+    return jsonify(aula={
+        "id": aula.id,
+        "unidade": {
+            "codigo": aula.unidade.codigo,
+            "nome": aula.unidade.nome
+        },
+        "sala": aula.sala.nome,
+        "professor": f"p{aula.professor.id}",
+        "turma": aula.turma.nome,
+        "data": aula.created_at.strftime("%d/%m/%Y %H:%M"),
+        "presencas": [{
+            "aluno": presenca.aluno.id,
+            "presenca": presenca.created_at.strftime("%d/%m/%Y %H:%M")
+        } for presenca in aula.presencas],
+    }), 200
