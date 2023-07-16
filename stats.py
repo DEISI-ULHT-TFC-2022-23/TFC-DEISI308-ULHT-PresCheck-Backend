@@ -9,8 +9,8 @@ stats = Blueprint('stats', __name__)
 def media_unidades_total():
     # Média de presenças de todas as aulas por unidade curricular
     results = [{'unidade': unidade.nome,
-                'media': round(db.session.query(func.coalesce(func.avg(Aula.presencas), 0.0)).group_by(
-                    unidade).scalar(), 2)}
+                'media': round(db.session.query(func.coalesce(func.avg(Aula.presencas), 0.0)).filter_by(
+                    unidade=unidade).scalar(), 2)}
                for unidade in Unidade.query.all()]
     return jsonify(results=results), 200
 
