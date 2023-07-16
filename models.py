@@ -457,7 +457,7 @@ class Sala(db.Model):
         return Sala.query.join(Arduino).filter(Arduino.uid == arduino_uid).first()
 
     @staticmethod
-    def create(nome):
+    def create(nome, arduino_id, ip_address):
         sala_exists = Sala.query.filter_by(nome=nome).first()
         if sala_exists:
             return False, sala_exists
@@ -467,23 +467,36 @@ class Sala(db.Model):
 
         db.session.add(sala)
         db.session.commit()
+
+        arduino = Arduino.create(arduino_id, ip_address, sala.id)
+        if not arduino[0]:
+            db.session.delete(sala)
+            db.session.commit()
+            return False, arduino[1]
+
         return True, sala
 
     @staticmethod
     def delete(sala_id):
         sala = Sala.query.get(sala_id)
-        if sala:
-            db.session.delete(sala)
-            db.session.commit()
-            return True
-        return False
+        if not sala:
+            return False
+
+        db.session.delete(sala)
+        db.session.commit()
+
+        arduino = Arduino.delete(sala.arduino.id)
+        if not arduino:
+            return False
+
+        return True
 
 
 class Arduino(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uid = db.Column(db.String(100), nullable=False, unique=True)
     ip_address = db.Column(db.String(100), nullable=False, unique=True)
-    sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False)
+    sala_id = db.Column(db.Integer, db.ForeignKey('sala.id'), nullable=False, unique=True)
     sala = db.relationship("Sala", back_populates="arduino", uselist=False)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, onupdate=func.now())

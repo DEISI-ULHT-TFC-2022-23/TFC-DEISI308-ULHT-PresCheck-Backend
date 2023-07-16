@@ -382,6 +382,7 @@ def admin_unidades_criar():
 @admin.route("/admin/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
 def admin_unidades_eliminar(unidade_id):
     try:
+
         unidade = Unidade.delete(unidade_id)
         if not unidade:
             return jsonify(error="Unidade não encontrada"), 404
@@ -405,16 +406,13 @@ def admin_salas_criar():
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
     try:
-        sala = Sala.create(nome)
+        sala = Sala.create(nome, arduino_id, ip_address)
         if not sala[0]:
-            return jsonify(error="Sala já existente"), 409
-
-        arduino = Arduino.create(arduino_id, ip_address, sala[1].id)
-        if not arduino[0]:
-            return jsonify(error="Arduino já existente"), 409
+            return jsonify(error="Sala ou arduino já registado"), 409
 
         return jsonify(message="Sala criada com sucesso"), 200
-    except Exception:
+    except Exception as e:
+        print(e)
         return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
@@ -423,11 +421,7 @@ def admin_salas_eliminar(sala_id):
     try:
         sala = Sala.delete(sala_id)
         if not sala:
-            return jsonify(error="Sala não encontrada"), 404
-
-        arduino = Arduino.delete(Arduino.get_arduino_by_sala("id", sala_id).id)
-        if not arduino:
-            return jsonify(error="Arduino não encontrado"), 404
+            return jsonify(error="Sala ou arduino não encontrada"), 404
 
         return jsonify(), 200
     except Exception:
