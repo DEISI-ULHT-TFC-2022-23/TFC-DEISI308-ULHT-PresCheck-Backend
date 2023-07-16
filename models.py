@@ -496,13 +496,13 @@ class Arduino(db.Model):
 
     @staticmethod
     def create(uid, ip_address, sala_id):
-        sala_exists = Sala.query.get(sala_id)
-        if not sala_exists:
-            return False, sala_exists
-
         uid_exists = Arduino.query.filter_by(uid=uid).all()
         if uid_exists:
             return False, uid_exists
+
+        ip_address_exists = Arduino.query.filter_by(ip_address=ip_address).all()
+        if ip_address_exists:
+            return False, ip_address_exists
 
         arduino = Arduino()
         arduino.uid = uid
