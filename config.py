@@ -1,11 +1,12 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv('.flaskenv')
 
 
 class Configuration:
-    # Configurações da App
+    # Configurações da ‘App’
     SECRET_KEY = os.environ.get('SECRET_KEY')
     ARDUINO_SECRET_KEY = os.environ.get('ARDUINO_SECRET_KEY')
     ARDUINO_AUTH_KEY = os.environ.get('ARDUINO_AUTH_KEY')
@@ -19,7 +20,7 @@ class Configuration:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)),
                                                           'ulht-prescheck.db')
 
-    # Configurações do email
+    # Configurações do endereço eletrónico
     MAIL_SERVER = 'smtp.office365.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True

@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+
 from models import *
 
 admin = Blueprint('admin', __name__)

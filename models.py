@@ -1,13 +1,13 @@
-import re
 import random
+import re
 import string
 
 import jwt
+from cryptography.fernet import Fernet
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash, check_password_hash
-from cryptography.fernet import Fernet
 
 db = SQLAlchemy()
 fernet = Fernet(Fernet.generate_key())
@@ -113,12 +113,14 @@ class Professor(db.Model):
     @staticmethod
     def get_unidades(professor_id):
         prof = Professor.query.get(professor_id)
-        return [{'id': unidade.id, 'codigo': unidade.codigo, 'nome': unidade.nome} for unidade in prof.unidades] or []
+        return [{'id': unidade.id, 'codigo': unidade.codigo, 'nome': unidade.nome}
+                for unidade in prof.unidades] or []
 
     @staticmethod
     def get_turmas(professor_id):
         prof = Professor.query.get(professor_id)
-        return [{'id': turma.id, 'nome': turma.nome, 'alunos': [aluno.id for aluno in turma.alunos]} for turma in prof.turmas] or []
+        return [{'id': turma.id, 'nome': turma.nome, 'alunos': [aluno.id for aluno in turma.alunos]}
+                for turma in prof.turmas] or []
 
     @staticmethod
     def create(professor_id, unidades, turmas):
@@ -213,14 +215,13 @@ class User(db.Model):
 
     @staticmethod
     def verify_session_token(token):
-        try:
-            from app import Configuration
-            data = jwt.decode(token, key=Configuration.SECRET_KEY, algorithms=['HS256', ])
-            user_exists = User.query.filter_by(username=data['user']).first()
-            if not user_exists:
-                raise Exception
-        except Exception:
+        from app import Configuration
+        data = jwt.decode(token, key=Configuration.SECRET_KEY, algorithms=['HS256', ])
+        user_exists = User.query.filter_by(username=data['user']).first()
+
+        if not user_exists:
             return None
+
         return data
 
     @staticmethod
@@ -347,7 +348,8 @@ class Aluno(db.Model):
     def get_last_classes(self, n=5):
         presencas = Presenca.query.filter_by(aluno_id=self.id).join(Aula).join(Unidade).order_by(
             Presenca.created_at.desc()).limit(n).all()
-        return [{"unidade": presenca.aula_id.unidade_id.nome, "presenca": presenca.created_at} for presenca in presencas]
+        return [{"unidade": presenca.aula_id.unidade_id.nome, "presenca": presenca.created_at}
+                for presenca in presencas]
 
     def get_turma_name(self):
         return Turma.query.get(self.turma_id).nome
@@ -586,7 +588,8 @@ class Aula(db.Model):
     @staticmethod
     def export(aula_id):
         aula = Aula.query.get(aula_id)
-        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')] for presenca in aula.presencas] or []
+        data = [[presenca.aluno_id, presenca.created_at.strftime('%d/%m/%Y às %H:%M')]
+                for presenca in aula.presencas] or []
         return data, aula.created_at.strftime('%d/%m/%Y às %H:%M')
 
 

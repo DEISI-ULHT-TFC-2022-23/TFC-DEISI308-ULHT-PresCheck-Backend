@@ -1,16 +1,17 @@
-import requests
-import jwt
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask
-from flask_mail import Mail
-from flask_cors import CORS
 
-from config import Configuration
+import jwt
+import requests
+from flask import Flask
+from flask_cors import CORS
+from flask_mail import Mail
+
 from admin import admin as admin_blueprint
 from auth import auth as auth_blueprint
+from config import Configuration
 from main import main as main_blueprint
-from stats import stats as stats_blueprint
 from models import db, User
+from stats import stats as stats_blueprint
 
 mail = Mail()
 

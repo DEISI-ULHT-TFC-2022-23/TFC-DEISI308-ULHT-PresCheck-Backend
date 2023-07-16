@@ -1,5 +1,7 @@
 import datetime
+
 from flask import Blueprint, request, jsonify
+
 from models import *
 
 main = Blueprint('main', __name__)
@@ -86,7 +88,7 @@ def get_aulas():
         'turma': Turma.query.get(dados['turma_id']).nome,
         'estado': dados['estado']
     } for sala, dados in aulas_a_decorrer.items() if dados['professor_id'] == professor_id]
-    return jsonify(aula_ativa[0] or {}), 200
+    return jsonify(next(iter(aula_ativa), {})), 200
 
 
 @main.route("/aula/iniciar", methods=["POST"])

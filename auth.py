@@ -1,5 +1,6 @@
-from flask import Blueprint, request, jsonify
 from threading import Thread
+
+from flask import Blueprint, request, jsonify
 
 from models import User
 
@@ -34,7 +35,8 @@ def login():
         return jsonify(error='Acesso negado. Verifique os seus dados e tente novamente. Caso tenha problemas, '
                              'contacte a Secretaria do DEISI.'), 401
 
-    return jsonify(token=login_result[1].generate_session_token(), professor_id=login_result[1].professor_id, is_admin=login_result[1].is_admin), 200
+    return jsonify(token=login_result[1].generate_session_token(), professor_id=login_result[1].professor_id,
+                   is_admin=login_result[1].is_admin), 200
 
 
 @auth.route("/recuperar", methods=["POST"])
