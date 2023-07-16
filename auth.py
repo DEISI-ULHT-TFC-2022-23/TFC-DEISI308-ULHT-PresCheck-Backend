@@ -53,7 +53,7 @@ def recuperar_senha():
         user.username,
         user.generate_reset_token(),
         "ULHT PresCheck - Recuperação",
-        "reset_email.html",)).start()
+        "reset_password.html",)).start()
 
     return jsonify(message="Email enviado com sucesso."), 200
 

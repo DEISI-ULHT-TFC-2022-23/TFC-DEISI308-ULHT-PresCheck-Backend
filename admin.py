@@ -64,7 +64,7 @@ def admin_utilizadores_criar():
         from auth import send_email
         from app import executor
         executor.submit(send_email,
-                        user[1].username, user[2], "ULHT PresCheck - Criação de acesso", "send_password.html")
+                        user[1].username, user[2], "ULHT PresCheck - Criação de acesso", "new_account.html")
 
         return jsonify(message="Utilizador criado com sucesso"), 200
     except Exception:

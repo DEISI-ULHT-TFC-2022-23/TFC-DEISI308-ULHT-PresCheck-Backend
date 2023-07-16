@@ -41,8 +41,8 @@ def acao_arduino(ip_address, acao):
 with app.app_context():
     db.create_all()
     User.create(user_id=1,
-                username=app.config['ADMIN_USERNAME'],
-                password=app.config['ADMIN_PASSWORD'],
+                username=Configuration.ADMIN_USERNAME,
+                password=Configuration.ADMIN_PASSWORD,
                 is_admin=True)
 
 app.register_blueprint(main_blueprint)

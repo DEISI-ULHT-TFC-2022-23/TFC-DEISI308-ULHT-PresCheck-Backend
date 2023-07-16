@@ -236,6 +236,11 @@ def marcar_presenca():
     params = request.get_json()
     sala_a_controlar, num_aluno = params['sala'], params['aluno']
 
+    try:
+        num_aluno = int(num_aluno)
+    except ValueError:
+        return jsonify(error="O número do aluno tem de ser um número inteiro."), 400
+
     if not sala_a_controlar or not num_aluno:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
