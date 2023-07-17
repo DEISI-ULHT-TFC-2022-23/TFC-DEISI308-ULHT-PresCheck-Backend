@@ -17,7 +17,9 @@ mail = Mail()
 
 app = Flask(__name__)
 app.config.from_object(Configuration)
-CORS(app)
+CORS(app,
+     resources={r"/*": {"origins": "*", "supports_credentials": True}},
+     allow_headers=["Content-Type", "Authorization"])
 db.init_app(app)
 mail.init_app(app)
 

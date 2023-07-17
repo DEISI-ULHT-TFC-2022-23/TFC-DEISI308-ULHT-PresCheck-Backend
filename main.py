@@ -38,30 +38,30 @@ def thread_arduino(ip_address, acao="encerrar"):
                     ip_address, acao)
 
 
-@main.before_request
-def check_auth():
-    authorization_header = request.headers.get("Authorization")
-    if not authorization_header or not authorization_header.startswith("Bearer "):
-        return jsonify(error="Não autorizado"), 401
-
-    try:
-        token = authorization_header.split(" ")[1]
-        if not token:
-            return jsonify(error="Não autorizado"), 401
-
-        user = User.verify_session_token(token)
-        if not user:
-            return jsonify(error="Não autorizado"), 401
-
-        if not user['active']:
-            return jsonify(error="Não autorizado"), 401
-
-    except jwt.ExpiredSignatureError:
-        return jsonify(error='Token expirado'), 401
-    except jwt.InvalidSignatureError:
-        return jsonify(error='Token inválido'), 401
-    except jwt.InvalidTokenError:
-        return jsonify(error='Token inválido'), 401
+# @main.before_request
+# def check_auth():
+#     authorization_header = request.headers.get("Authorization")
+#     if not authorization_header or not authorization_header.startswith("Bearer "):
+#         return jsonify(error="Não autorizado"), 401
+#
+#     try:
+#         token = authorization_header.split(" ")[1]
+#         if not token:
+#             return jsonify(error="Não autorizado"), 401
+#
+#         user = User.verify_session_token(token)
+#         if not user:
+#             return jsonify(error="Não autorizado"), 401
+#
+#         if not user['active']:
+#             return jsonify(error="Não autorizado"), 401
+#
+#     except jwt.ExpiredSignatureError:
+#         return jsonify(error='Token expirado'), 401
+#     except jwt.InvalidSignatureError:
+#         return jsonify(error='Token inválido'), 401
+#     except jwt.InvalidTokenError:
+#         return jsonify(error='Token inválido'), 401
 
 
 @main.route("/unidades", methods=["GET"])
