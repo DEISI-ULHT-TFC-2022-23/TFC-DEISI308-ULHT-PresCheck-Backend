@@ -1,8 +1,35 @@
+import jwt
 from flask import Blueprint, jsonify, request
 
 from models import *
 
 stats = Blueprint('stats', __name__)
+
+
+@stats.before_request
+def check_auth():
+    authorization_header = request.headers.get("Authorization")
+    if not authorization_header or not authorization_header.startswith("Bearer "):
+        return jsonify(error="Não autorizado"), 401
+
+    try:
+        token = authorization_header.split(" ")[1]
+        if not token:
+            return jsonify(error="Não autorizado"), 401
+
+        user = User.verify_session_token(token)
+        if not user:
+            return jsonify(error="Não autorizado"), 401
+
+        if not user['active']:
+            return jsonify(error="Não autorizado"), 401
+
+    except jwt.ExpiredSignatureError:
+        return jsonify(error='Token expirado'), 401
+    except jwt.InvalidSignatureError:
+        return jsonify(error='Token inválido'), 401
+    except jwt.InvalidTokenError:
+        return jsonify(error='Token inválido'), 401
 
 
 @stats.route("/stats/unidades/media/total", methods=["GET"])
@@ -12,8 +39,8 @@ def media_unidades_total():
                 'media': round(media, 2)}
                for unidade, media
                in db.session.query(Unidade.nome, func.coalesce(func.avg(Presenca.id), 0.0))
-               .join(Presenca)
                .join(Aula)
+               .join(Unidade)
                .group_by(Unidade.nome).all()]
     return jsonify(results=results), 200
 
@@ -25,8 +52,8 @@ def media_unidades_by_professor(professor_id):
                 'media': round(media, 2)}
                for unidade, media
                in db.session.query(Unidade.nome, func.coalesce(func.avg(Presenca.id), 0.0))
-               .join(Presenca)
                .join(Aula)
+               .join(Unidade)
                .filter_by(professor_id=professor_id)
                .group_by(Unidade.nome).all()]
     return jsonify(results=results), 200

@@ -74,20 +74,3 @@ def recuperar_senha_alterar():
 
     user.set_password(password, commit=True)
     return jsonify(message="Senha alterada com sucesso."), 200
-
-
-@auth.route("/conta/alterar-senha", methods=["POST"])
-def alterar_senha():
-    params = request.get_json()
-    username, password, new_password = params['username'], params['password'], params['new_password']
-
-    if not username or not password or not new_password:
-        return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
-
-    user = User.verify_user(username)
-    if not user or not user.verify_password(password):
-        return jsonify(error='Acesso negado. Verifique os seus dados e tente novamente. Caso tenha problemas, '
-                             'contacte a Secretaria do DEISI.'), 401
-
-    user.set_password(new_password, commit=True)
-    return jsonify(message="Senha alterada com sucesso."), 200

@@ -38,6 +38,32 @@ def thread_arduino(ip_address, acao="encerrar"):
                     ip_address, acao)
 
 
+@main.before_request
+def check_auth():
+    authorization_header = request.headers.get("Authorization")
+    if not authorization_header or not authorization_header.startswith("Bearer "):
+        return jsonify(error="Não autorizado"), 401
+
+    try:
+        token = authorization_header.split(" ")[1]
+        if not token:
+            return jsonify(error="Não autorizado"), 401
+
+        user = User.verify_session_token(token)
+        if not user:
+            return jsonify(error="Não autorizado"), 401
+
+        if not user['active']:
+            return jsonify(error="Não autorizado"), 401
+
+    except jwt.ExpiredSignatureError:
+        return jsonify(error='Token expirado'), 401
+    except jwt.InvalidSignatureError:
+        return jsonify(error='Token inválido'), 401
+    except jwt.InvalidTokenError:
+        return jsonify(error='Token inválido'), 401
+
+
 @main.route("/unidades", methods=["GET"])
 def get_unidades():
     if not request.args or not request.args.get('professor_id', type=int):
@@ -332,3 +358,20 @@ def get_historico_aula():
             "presenca": presenca.created_at.strftime("%d/%m/%Y %H:%M")
         } for presenca in aula.presencas],
     }), 200
+
+
+@main.route("/conta/alterar-senha", methods=["POST"])
+def alterar_senha():
+    params = request.get_json()
+    username, password, new_password = params['username'], params['password'], params['new_password']
+
+    if not username or not password or not new_password:
+        return jsonify(error='[CRITICAL] Falta parâmetros para completar o processo!'), 400
+
+    user = User.verify_user(username)
+    if not user or not user.verify_password(password):
+        return jsonify(error='Acesso negado. Verifique os seus dados e tente novamente. Caso tenha problemas, '
+                             'contacte a Secretaria do DEISI.'), 401
+
+    user.set_password(new_password, commit=True)
+    return jsonify(message="Senha alterada com sucesso."), 200
