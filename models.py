@@ -6,7 +6,7 @@ import jwt
 from cryptography.fernet import Fernet
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, distinct
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
@@ -348,7 +348,7 @@ class Aluno(db.Model):
     def get_last_classes(self, n=5):
         presencas = Presenca.query.filter_by(aluno_id=self.id).join(Aula).join(Unidade).order_by(
             Presenca.created_at.desc()).limit(n).all()
-        return [{"unidade": presenca.aula_id.unidade_id.nome, "presenca": presenca.created_at}
+        return [{"unidade": presenca.aula.unidade.nome, "presenca": presenca.created_at}
                 for presenca in presencas]
 
     def get_turma_name(self):
@@ -431,7 +431,7 @@ class Dispositivo(db.Model):
         if not aluno:
             return False
 
-        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id, uid=uid).all()
+        dispositivo = Dispositivo.query.filter_by(aluno_id=aluno_id, uid=uid).first()
         if not dispositivo:
             return False
 

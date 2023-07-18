@@ -252,7 +252,7 @@ def arduino_presenca():
     if not aluno:
         return jsonify(error="Aluno não encontrado."), 404
 
-    if any(aluno["numero"] == aluno.id for aluno in sala_selecionada['alunos']):
+    if any(aluno_in_sala["numero"] == aluno.id for aluno_in_sala in sala_selecionada['alunos']):
         return jsonify(error="Aluno já está na lista de presenças"), 409
 
     sala_selecionada['alunos'].append({"numero": aluno.id, "timestamp": datetime.datetime.now()})

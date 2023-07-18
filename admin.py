@@ -64,20 +64,17 @@ def admin_utilizadores_criar():
     if not username or unidades is None or is_admin is None or is_professor is None:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    try:
-        user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades,
-                           turmas=turmas)
-        if not user[0]:
-            return jsonify(error="O utilizador já existe."), 409
+    user = User.create(username=username, is_admin=is_admin, is_professor=is_professor, unidades=unidades,
+                       turmas=turmas)
+    if not user[0]:
+        return jsonify(error="O utilizador já existe."), 409
 
-        from auth import send_email
-        from app import executor
-        executor.submit(send_email,
-                        user[1].username, user[2], "ULHT PresCheck - Criação de acesso", "new_account.html")
+    from auth import send_email
+    from app import executor
+    executor.submit(send_email,
+                    user[1].username, user[2], "ULHT PresCheck - Criação de acesso", "new_account.html")
 
-        return jsonify(message="Utilizador criado com sucesso"), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+    return jsonify(message="Utilizador criado com sucesso"), 200
 
 
 @admin.route("/admin/utilizadores/editar/<string:username>", methods=["PUT"])
@@ -282,8 +279,6 @@ def admin_alunos_criar():
         return jsonify(message="Aluno criado com sucesso"), 200
     except ValueError:
         return jsonify(error="Número de aluno inválido"), 400
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
 
 
 @admin.route("/admin/alunos/editar/<int:aluno_id>", methods=["PUT"])
@@ -293,31 +288,24 @@ def admin_alunos_editar(aluno_id):
     if not turma:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    try:
-        aluno = Aluno.query.get(aluno_id)
-        if not aluno:
-            return jsonify(error="Aluno não encontrado"), 404
+    aluno = Aluno.query.get(aluno_id)
+    if not aluno:
+        return jsonify(error="Aluno não encontrado"), 404
 
-        update = aluno.update(turma=turma, commit=True)
-        if not update:
-            return jsonify(error="A turma atribuida está inválida."), 409
+    update = aluno.update(turma=turma, commit=True)
+    if not update:
+        return jsonify(error="A turma atribuida está inválida."), 409
 
-        return jsonify(message="Aluno editado com sucesso"), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema a editar na base de dados."), 500
+    return jsonify(message="Aluno editado com sucesso"), 200
 
 
 @admin.route("/admin/alunos/eliminar/<int:aluno_id>", methods=["DELETE"])
 def admin_alunos_eliminar(aluno_id):
-    try:
-        deletion = Aluno.delete(aluno_id)
+    deletion = Aluno.delete(aluno_id)
+    if not deletion:
+        return jsonify(error="Aluno não encontrado"), 404
 
-        if not deletion:
-            return jsonify(error="Aluno não encontrado"), 404
-
-        return jsonify(), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+    return jsonify(), 200
 
 
 @admin.route("/admin/dispositivo/criar", methods=["PUT"])
@@ -334,21 +322,17 @@ def admin_dispositivo_criar():
             return jsonify(error="Dispositivo já existente"), 409
 
         return jsonify(), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+    except ValueError:
+        return jsonify(error="Número de aluno inválido"), 400
 
 
 @admin.route("/admin/dispositivo/eliminar/<int:aluno_id>/<string:uid>", methods=["DELETE"])
 def admin_dispositivo_eliminar(aluno_id, uid):
-    try:
-        deletion = Dispositivo.delete(aluno_id, uid)
+    deletion = Dispositivo.delete(aluno_id, uid)
+    if not deletion:
+        return jsonify(error="Não foi possível eliminar o dispositivo."), 404
 
-        if not deletion:
-            return jsonify(error="Não foi possível eliminar o dispositivo."), 404
-
-        return jsonify(), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+    return jsonify(), 200
 
 
 @admin.route("/admin/unidades", methods=["GET"])
@@ -378,27 +362,20 @@ def admin_unidades_criar():
     if not codigo or not nome:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    try:
-        unidade = Unidade.create(codigo, nome)
-        if not unidade[0]:
-            return jsonify(error="Unidade já existente"), 409
+    unidade = Unidade.create(codigo, nome)
+    if not unidade[0]:
+        return jsonify(error="Unidade já existente"), 409
 
-        return jsonify(message="Unidade criada com sucesso"), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+    return jsonify(message="Unidade criada com sucesso"), 200
 
 
 @admin.route("/admin/unidades/eliminar/<int:unidade_id>", methods=["DELETE"])
 def admin_unidades_eliminar(unidade_id):
-    try:
+    unidade = Unidade.delete(unidade_id)
+    if not unidade:
+        return jsonify(error="Unidade não encontrada"), 404
 
-        unidade = Unidade.delete(unidade_id)
-        if not unidade:
-            return jsonify(error="Unidade não encontrada"), 404
-
-        return jsonify(), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+    return jsonify(), 200
 
 
 @admin.route("/admin/salas", methods=["GET"])
@@ -414,27 +391,20 @@ def admin_salas_criar():
     if not nome or not arduino_id or not ip_address:
         return jsonify(error="[CRITICAL] Falta parâmetros para completar o processo!"), 400
 
-    try:
-        sala = Sala.create(nome, arduino_id, ip_address)
-        if not sala[0]:
-            return jsonify(error="Sala ou arduino já registado"), 409
+    sala = Sala.create(nome, arduino_id, ip_address)
+    if not sala[0]:
+        return jsonify(error="Sala ou arduino já registado"), 409
 
-        return jsonify(message="Sala criada com sucesso"), 200
-    except Exception as e:
-        print(e)
-        return jsonify(error="Ocorreu um problema ao inserir na base de dados."), 500
+    return jsonify(message="Sala criada com sucesso"), 200
 
 
 @admin.route("/admin/salas/eliminar/<int:sala_id>", methods=["DELETE"])
 def admin_salas_eliminar(sala_id):
-    try:
-        sala = Sala.delete(sala_id)
-        if not sala:
-            return jsonify(error="Sala ou arduino não encontrada"), 404
+    sala = Sala.delete(sala_id)
+    if not sala:
+        return jsonify(error="Sala ou arduino não encontrada"), 404
 
-        return jsonify(), 200
-    except Exception:
-        return jsonify(error="Ocorreu um problema ao eliminar da base de dados."), 500
+    return jsonify(), 200
 
 
 @admin.route("/admin/aulas/<string:tipo>", methods=["GET"])
