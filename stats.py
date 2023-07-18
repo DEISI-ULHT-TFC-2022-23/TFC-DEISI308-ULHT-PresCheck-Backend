@@ -35,14 +35,14 @@ stats = Blueprint('stats', __name__)
 
 
 # /stats/unidades?tipo=total
-# /stats/unidades?tipo=total&unidade_id=1
+# /stats/unidades?tipo=total&unidades=1,2,3
 # /stats/unidades?tipo=prof&professor_id=1
-# /stats/unidades?tipo=prof&professor_id=1&unidade_id=1
+# /stats/unidades?tipo=prof&professor_id=1&unidades=1,2,3
 @stats.route("/stats/unidades", methods=["GET"])
 def stats_unidades():
     tipo_arg = request.args.get('tipo')
     professor_id_arg = request.args.get('professor_id', type=int)
-    unidade_id_arg = request.args.get('unidade_id', type=int)
+    unidades_arg = request.args.get('unidades')
 
     if not request.args or not tipo_arg:
         return jsonify(error="Falta parâmetros para completar o processo!"), 400
@@ -74,8 +74,9 @@ def stats_unidades():
     if tipo_arg == 'prof':
         query = query.filter(Aula.professor_id == professor_id_arg)
 
-    if unidade_id_arg is not None:
-        query = query.filter(Aula.unidade_id == unidade_id_arg)
+    if unidades_arg is not None:
+        unidades_arg = unidades_arg.split(',')
+        query = query.filter(Aula.unidade_id.in_(unidades_arg))
 
     query = query.group_by(Unidade.nome)
 
