@@ -225,6 +225,7 @@ def stats_alunos():
             .join(Aula, Presenca.aula_id == Aula.id)
             .join(Unidade, Aula.unidade_id == Unidade.id)
             .join(Turma, Aula.turma_id == Turma.id)
+            .join(Aluno, Presenca.aluno_id == Aluno.id)
             .filter(Aluno.id == aluno_id_arg)
             .filter(Aula.unidade_id == unidade_id_arg)
             .filter(Aula.professor_id == professor_id_arg)
