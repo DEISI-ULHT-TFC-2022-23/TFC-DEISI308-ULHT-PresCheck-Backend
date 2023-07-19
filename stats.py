@@ -165,17 +165,16 @@ def stats_turmas():
     } for row in query.all()]), 200
 
 
-# /stats/alunos?tipo=historico&aluno_id=1
-# /stats/alunos?tipo=historico&aluno_id=1&unidades=1,2,3
-# /stats/alunos?tipo=dados&aluno_id=1
-# /stats/alunos?tipo=dados&aluno_id=1&unidades=1,2,3
+# /stats/alunos?tipo=historico&aluno_id=1&professor_id=1&unidade_id=1
+# /stats/alunos?tipo=dados&aluno_id=1&professor_id=1&unidade_id=1
 @stats.route("/stats/alunos", methods=["GET"])
 def stats_alunos():
     tipo_arg = request.args.get('tipo')
     aluno_id_arg = request.args.get('aluno_id', type=int)
-    unidades_arg = request.args.get('unidades')
+    unidade_id_arg = request.args.get('unidade_id', type=int)
+    professor_id_arg = request.args.get('professor_id', type=int)
 
-    if not request.args or not aluno_id_arg or not tipo_arg:
+    if not request.args or not aluno_id_arg or not tipo_arg or not unidade_id_arg or not professor_id_arg:
         return jsonify(error="Falta parâmetros para completar o processo!"), 400
 
     if tipo_arg not in ['historico', 'dados']:
@@ -200,12 +199,10 @@ def stats_alunos():
             .join(Turma, Aula.turma_id == Turma.id)
             .join(Aluno, Turma.id == Aluno.turma_id)
             .filter(Aluno.id == aluno_id_arg)
+            .filter(Aula.unidade_id == unidade_id_arg)
+            .filter(Aula.professor_id == professor_id_arg)
             .group_by(Aula.unidade_id, Aluno.id)
         )
-
-        if unidades_arg is not None:
-            unidades_arg = unidades_arg.split(',')
-            query = query.filter(Aula.unidade_id.in_(unidades_arg))
 
         results = [{
             'unidade': row.unidade,
@@ -228,31 +225,28 @@ def stats_alunos():
             .join(Aula, Presenca.aula_id == Aula.id)
             .join(Unidade, Aula.unidade_id == Unidade.id)
             .join(Turma, Aula.turma_id == Turma.id)
-            .filter(Presenca.aluno_id == aluno_id_arg)
+            .filter(Aluno.id == aluno_id_arg)
+            .filter(Aula.unidade_id == unidade_id_arg)
+            .filter(Aula.professor_id == professor_id_arg)
             .order_by(Presenca.created_at)
         )
-
-        if unidades_arg is not None:
-            unidades_arg = unidades_arg.split(',')
-            query = query.filter(Aula.unidade_id.in_(unidades_arg))
 
         results = [{
             'unidade': row.unidade,
             'turma': row.turma,
-            'presenca': row.presenca
+            'presenca': row.presenca.strftime("%d/%m/%Y %H:%M")
         } for row in query.all()]
 
     return jsonify(results=results), 200
 
 
-# /stats/presencas?professor_id=1
-# /stats/presencas?professor_id=1&unidades=1,2,3
+# /stats/presencas?professor_id=1&unidade_id=1
 @stats.route("/stats/presencas", methods=["GET"])
 def stats_presencas():
     professor_id_arg = request.args.get('professor_id', type=int)
-    unidades_arg = request.args.get('unidades')
+    unidade_id_arg = request.args.get('unidade_id', type=int)
 
-    if not request.args or not professor_id_arg:
+    if not request.args or not professor_id_arg or not unidade_id_arg:
         return jsonify(error="Falta parâmetros para completar o processo!"), 400
 
     query = (
@@ -264,15 +258,12 @@ def stats_presencas():
         .join(Aula, Presenca.aula_id == Aula.id)
         .join(Turma, Aula.turma_id == Turma.id)
         .filter(Aula.professor_id == professor_id_arg)
+        .filter(Aula.unidade_id == unidade_id_arg)
         .group_by(Presenca.aluno_id)
     )
 
-    if unidades_arg is not None:
-        unidades_arg = unidades_arg.split(',')
-        query = query.filter(Aula.unidade_id.in_(unidades_arg))
-
     return jsonify(results=[{
-        'aluno': row.aluno,
+        'numero': row.aluno,
         'turma': row.turma,
-        'num_presencas': row.num_presencas
+        'presencas': row.num_presencas
     } for row in query.all()]), 200
