@@ -3,6 +3,7 @@ import statistics
 from flask import Blueprint, jsonify, request
 
 from models import *
+from sqlalchemy.sql import distinct, desc
 
 stats = Blueprint('stats', __name__)
 
@@ -229,7 +230,7 @@ def stats_alunos():
             .filter(Aluno.id == aluno_id_arg)
             .filter(Aula.unidade_id == unidade_id_arg)
             .filter(Aula.professor_id == professor_id_arg)
-            .order_by(Presenca.created_at)
+            .order_by(desc(Presenca.created_at))
         )
 
         results = [{

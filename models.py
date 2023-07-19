@@ -6,7 +6,7 @@ import jwt
 from cryptography.fernet import Fernet
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.sql import func, distinct
+from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
