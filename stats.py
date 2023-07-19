@@ -259,7 +259,7 @@ def stats_presencas():
         db.session.query(
             Presenca.aluno_id.label("aluno"),
             Turma.nome.label("turma"),
-            func.sum(Aula.presencas).label("num_presencas")
+            func.count(Aula.presencas).label("num_presencas")
         )
         .join(Aula, Presenca.aula_id == Aula.id)
         .join(Turma, Aula.turma_id == Turma.id)
