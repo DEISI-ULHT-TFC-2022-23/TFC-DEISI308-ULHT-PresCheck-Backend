@@ -8,33 +8,6 @@ from sqlalchemy.sql import distinct, desc
 stats = Blueprint('stats', __name__)
 
 
-# @stats.before_request
-# def check_auth():
-#     print([header for header in request.headers])
-#     authorization_header = request.headers.get("Authorization")
-#     if not authorization_header or not authorization_header.startswith("Bearer "):
-#         return jsonify(error="Não autorizado"), 401
-#
-#     try:
-#         token = authorization_header.split(" ")[1]
-#         if not token:
-#             return jsonify(error="Não autorizado"), 401
-#
-#         user = User.verify_session_token(token)
-#         if not user:
-#             return jsonify(error="Não autorizado"), 401
-#
-#         if not user['active']:
-#             return jsonify(error="Não autorizado"), 401
-#
-#     except jwt.ExpiredSignatureError:
-#         return jsonify(error='Token expirado'), 401
-#     except jwt.InvalidSignatureError:
-#         return jsonify(error='Token inválido'), 401
-#     except jwt.InvalidTokenError:
-#         return jsonify(error='Token inválido'), 401
-
-
 # /stats/unidades?tipo=total
 # /stats/unidades?tipo=total&unidades=1,2,3
 # /stats/unidades?tipo=prof&professor_id=1
@@ -198,7 +171,7 @@ def stats_alunos():
             .join(Aula, subquery.c.aula_id == Aula.id)
             .join(Unidade, Aula.unidade_id == Unidade.id)
             .join(Turma, Aula.turma_id == Turma.id)
-            .join(Aluno, Turma.id == Aluno.turma_id)
+            .join(Aluno, Presenca.aluno_id == Aluno.id)
             .filter(Aluno.id == aluno_id_arg)
             .filter(Aula.unidade_id == unidade_id_arg)
             .filter(Aula.professor_id == professor_id_arg)

@@ -7,7 +7,7 @@ from models import User
 auth = Blueprint('auth', __name__)
 
 
-def send_email(username, data, subject, template, demo=True):  # TODO: Mudar para False quando for para produção
+def send_email(username, data, subject, template, demo=True):
     from app import app, mail
     from flask import render_template
     from flask_mail import Message

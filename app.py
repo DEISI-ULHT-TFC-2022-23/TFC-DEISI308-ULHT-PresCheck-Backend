@@ -62,8 +62,3 @@ if __name__ == "__main__":
         print("A encerrar o servidor...")
         executor.shutdown(wait=True)
         exit(0)
-
-# TODO: Implementar JWT em todas as rotas
-# TODO: Alterar os métodos HTTP para os corretos (ex: PUT para POST na criação de objetos)
-# TODO: Implementar paginação nas rotas de listagem
-# TODO: Decidir as estatisticas a apresentar
